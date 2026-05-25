@@ -1,0 +1,50 @@
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    staticcheck:
+      # ST1023 (redundant type) and QF1003 (tagged switch suggestion) are
+      # stylistic advisories that fire on legacy code in this repo. They
+      # only show up after the v2 upgrade — handle them in a follow-up
+      # cleanup PR rather than expanding this PR's scope.
+      checks:
+        - all
+        # ST1003 fires on API-bound types like SiteId/ApiKey/ResultId.
+        # These names must match Pleasanter's wire format exactly, so
+        # renaming them is not an option.
+        - -ST1003
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test\.go
+      - linters:
+          - errcheck
+          - govet
+          - unused
+        path: testdata/
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

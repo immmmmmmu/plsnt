@@ -1,0 +1,19 @@
+/* #2 貸出 - ステータス別の行色分け */
+/* 100: 新規(青) 200: 貸出中(緑) 900: 返却済(灰) 910: 延滞(赤) */
+
+.grid-row[data-status="100"] {
+  background-color: #e3f2fd !important;
+}
+
+.grid-row[data-status="200"] {
+  background-color: #e8f5e9 !important;
+}
+
+.grid-row[data-status="900"] {
+  background-color: #f5f5f5 !important;
+  opacity: 0.7;
+}
+
+.grid-row[data-status="910"] {
+  background-color: #ffebee !important;
+}

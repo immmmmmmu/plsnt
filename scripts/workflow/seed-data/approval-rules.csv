@@ -1,0 +1,4 @@
+Title,NumA,NumB,NumC,ClassC,ClassD,ClassE
+低額承認（20万未満）,0,200000,1,role:課長,,
+中額承認（20万〜100万）,200000,1000000,2,role:課長,role:部長,
+高額承認（100万以上）,1000000,0,3,role:課長,role:部長,role:役員

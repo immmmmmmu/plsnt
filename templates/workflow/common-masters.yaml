@@ -1,0 +1,48 @@
+name: workflow-common-masters
+description: "共通事務フローアプリ - 共通マスタ5テーブル（部署・役職・承認ルール・申請種別・取引先）"
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. plsnt workflow deploy --folder-id N で親 SiteId を指定
+  #      (batch run で実行する場合は --var folder_id=N)
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+steps:
+  # --- 1. 部署マスタ（Results型）---
+  - name: create-dept
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"部署マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","Title","ClassB","Body"]},"Columns":[{"ColumnName":"ClassA","LabelText":"部署コード","ValidateRequired":true,"NoDuplication":true},{"ColumnName":"ClassB","LabelText":"親部署コード"}]}}'
+
+  # --- 2. 役職マスタ（Results型）---
+  - name: create-position
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"役職マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","Title","NumA","NumB","Body"]},"Columns":[{"ColumnName":"ClassA","LabelText":"役職コード","ValidateRequired":true,"NoDuplication":true},{"ColumnName":"NumA","LabelText":"承認上限額"},{"ColumnName":"NumB","LabelText":"役職レベル"}]}}'
+
+  # --- 3. 申請種別マスタ（Results型）---
+  - name: create-app-type
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"申請種別マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","Title","CheckA","ClassB","DescriptionA","Body"]},"Columns":[{"ColumnName":"ClassA","LabelText":"種別コード","ValidateRequired":true,"NoDuplication":true},{"ColumnName":"CheckA","LabelText":"必須添付"},{"ColumnName":"ClassB","LabelText":"承認ルール紐付け"},{"ColumnName":"DescriptionA","LabelText":"支払区分選択肢"}]}}'
+
+  # --- 4. 承認ルールマスタ（Results型）---
+  - name: create-approval-rule
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"承認ルールマスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["Title","NumA","NumB","ClassA","ClassB","NumC","ClassC","ClassD","ClassE","NumD","Body"]},"Columns":[{"ColumnName":"NumA","LabelText":"金額下限"},{"ColumnName":"NumB","LabelText":"金額上限"},{"ColumnName":"ClassA","LabelText":"対象部署コード"},{"ColumnName":"ClassB","LabelText":"対象申請種別"},{"ColumnName":"NumC","LabelText":"承認段数","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"第1承認者指定","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"第2承認者指定"},{"ColumnName":"ClassE","LabelText":"第3承認者指定"},{"ColumnName":"NumD","LabelText":"優先度"}]}}'
+
+  # --- 5. 取引先マスタ（Results型）---
+  - name: create-vendor
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"取引先マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["Title","ClassA","DescriptionA","ClassB","ClassC","DescriptionB","Body"]},"Columns":[{"ColumnName":"ClassA","LabelText":"取引先コード","NoDuplication":true},{"ColumnName":"DescriptionA","LabelText":"住所"},{"ColumnName":"ClassB","LabelText":"担当者名"},{"ColumnName":"ClassC","LabelText":"電話番号"},{"ColumnName":"DescriptionB","LabelText":"口座情報"}]}}'

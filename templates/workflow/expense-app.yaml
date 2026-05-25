@@ -1,0 +1,40 @@
+name: workflow-expense-app
+description: "共通事務フローアプリ - 立替・支出依頼（申請ヘッダ+明細+承認履歴）"
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. plsnt workflow deploy --folder-id N で親 SiteId を指定
+  #      (batch run で実行する場合は --var folder_id=N)
+  #   4. 既存マスタ SiteId は --set dept_site_id=M / --var dept_site_id=M で上書き
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+  dept_site_id: "0"
+  app_type_site_id: "0"
+  vendor_site_id: "0"
+steps:
+  # --- 1. 申請ヘッダ（Issues型）---
+  - name: create-header
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"申請ヘッダ","ReferenceType":"Issues","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","NumA","NumB","NumC","DateA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","ClassC","NumB","Status","CompletionTime"]},"Columns":[{"ColumnName":"ClassA","LabelText":"申請種別","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"支払区分","ChoicesText":"立替払い\n仮払い\n会社カード利用\n請求書支払い","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"申請部署","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"取引先"},{"ColumnName":"ClassE","LabelText":"現在の承認者"},{"ColumnName":"ClassF","LabelText":"税区分","ChoicesText":"税込\n税抜"},{"ColumnName":"NumA","LabelText":"承認段階"},{"ColumnName":"NumB","LabelText":"合計金額","ValidateRequired":true},{"ColumnName":"NumC","LabelText":"概算金額"},{"ColumnName":"DateA","LabelText":"精算期限"}]}}'
+
+  # --- 2. 申請明細（Results型）---
+  - name: create-detail
+    command: site create
+    depends_on: [create-header]
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"申請明細","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","NumA","NumB","ClassB","ClassC","DateA","ClassD"]},"GridColumnHash":{"General":["Title","ClassA","NumA","ClassB","DateA","ClassD"]},"Columns":[{"ColumnName":"ClassA","LabelText":"申請ヘッダ","ValidateRequired":true},{"ColumnName":"NumA","LabelText":"金額","ValidateRequired":true},{"ColumnName":"NumB","LabelText":"税率"},{"ColumnName":"ClassB","LabelText":"税区分","ChoicesText":"税込\n税抜"},{"ColumnName":"ClassC","LabelText":"支払先"},{"ColumnName":"DateA","LabelText":"利用日","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"用途","ChoicesText":"交通費\n飲食\n消耗品\n通信費\n宿泊費\nその他"}]}}'
+
+  # --- 3. 承認履歴（Results型）---
+  - name: create-history
+    command: site create
+    depends_on: [create-header]
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"承認履歴","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","NumA","NumB","DateA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","NumB","DateA"]},"Columns":[{"ColumnName":"Title","LabelText":"アクション","ChoicesText":"承認\n差戻\n却下\n経路設定"},{"ColumnName":"ClassA","LabelText":"申請ヘッダ","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"承認者名","ValidateRequired":true},{"ColumnName":"NumA","LabelText":"承認者ID"},{"ColumnName":"NumB","LabelText":"承認段階"},{"ColumnName":"DateA","LabelText":"アクション日時","ValidateRequired":true}]}}'

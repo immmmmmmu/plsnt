@@ -1,0 +1,100 @@
+# link-setup.yaml - ワークフローアプリのテーブル間リンク設定（参照用）
+#
+# 注意: このファイルはバッチエンジンで直接実行するテンプレートではありません。
+# site update は SiteSettings を全体上書きするため、
+# リンク設定にはbashスクリプト（site get → マージ → site update）が必要です。
+# (relational-modeling / plsnt-guide / app-build-workflow スキル準拠)
+#
+# 実行方法:
+#   ./scripts/workflow/setup-links.sh
+#
+# リンクフィールド3点セット (relational-modeling スキル):
+#   1. Links: テーブル間リレーション定義（参照元テーブルの SiteSettings に設定）
+#   2. ChoicesText: "[[SiteId]]" を参照元テーブルの Columns に設定（UIドロップダウン表示）
+#   3. TitleColumns: 参照先テーブルに設定（リンク表示に参照先の ItemTitle を使用）
+#
+# scaffold-shift-management-v3.yaml Phase 4 パターン参照:
+#   バッチテンプレートでは全 SiteSettings を含めた JSON で site update を発行。
+#   ワークフローアプリでは既存テーブルに追加設定するため、
+#   bashスクリプトの site get → マージ → site update パターンを採用。
+
+name: workflow-link-setup
+description: "ワークフローアプリのテーブル間リンク設定（参照用定義）"
+
+# 実行スクリプト
+script: scripts/workflow/setup-links.sh
+
+# Phase 0: TitleColumns + EditorColumnHash 修正
+title_columns:
+  # 全テーブルに TitleColumns: ["Title"] を設定
+  # relational-modeling スキル: 参照先テーブルに TitleColumns が必要（リンク表示に必須）
+  - site_id: 32519  # 部署マスタ
+    value: ["Title"]
+  - site_id: 32520  # 役職マスタ
+    value: ["Title"]
+  - site_id: 32521  # 申請種別マスタ
+    value: ["Title"]
+  - site_id: 32522  # 承認ルールマスタ
+    value: ["Title"]
+  - site_id: 32523  # 取引先マスタ
+    value: ["Title"]
+  - site_id: 32524  # 申請ヘッダ
+    value: ["Title"]
+  - site_id: 32525  # 申請明細
+    value: ["Title"]
+  - site_id: 32526  # 承認履歴
+    value: ["Title"]
+
+# Phase 1: リンク定義一覧
+links:
+  # 申請ヘッダ → マスタテーブル（1:N リレーション）
+  - source_table: 申請ヘッダ
+    source_site_id: 32524
+    source_column: ClassA
+    target_table: 申請種別マスタ
+    target_site_id: 32521
+    target_type: Results
+    label: 申請種別
+
+  - source_table: 申請ヘッダ
+    source_site_id: 32524
+    source_column: ClassC
+    target_table: 部署マスタ
+    target_site_id: 32519
+    target_type: Results
+    label: 申請部署
+
+  - source_table: 申請ヘッダ
+    source_site_id: 32524
+    source_column: ClassD
+    target_table: 取引先マスタ
+    target_site_id: 32523
+    target_type: Results
+    label: 取引先
+
+  # 申請明細 → 申請ヘッダ（1:N 明細リレーション）
+  - source_table: 申請明細
+    source_site_id: 32525
+    source_column: ClassA
+    target_table: 申請ヘッダ
+    target_site_id: 32524
+    target_type: Issues
+    label: 申請ヘッダ
+
+  # 承認履歴 → 申請ヘッダ（1:N 明細リレーション）
+  - source_table: 承認履歴
+    source_site_id: 32526
+    source_column: ClassA
+    target_table: 申請ヘッダ
+    target_site_id: 32524
+    target_type: Issues
+    label: 申請ヘッダ
+
+  # 承認ルールマスタ → 申請種別マスタ（1:N リレーション）
+  - source_table: 承認ルールマスタ
+    source_site_id: 32522
+    source_column: ClassB
+    target_table: 申請種別マスタ
+    target_site_id: 32521
+    target_type: Results
+    label: 対象申請種別

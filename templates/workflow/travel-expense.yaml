@@ -1,0 +1,49 @@
+name: workflow-travel-expense
+description: "共通事務フローアプリ - 出張申請（出張ヘッダ+出張明細+リンク設定）"
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. plsnt workflow deploy --folder-id N で親 SiteId を指定
+  #      (batch run で実行する場合は --var folder_id=N)
+  #   4. 既存マスタ SiteId は --set dept_site_id=M / --var dept_site_id=M で上書き
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+  dept_site_id: "0"
+  app_type_site_id: "0"
+steps:
+  # --- 1. 出張申請ヘッダ（Issues型）---
+  - name: create-header
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"出張申請ヘッダ","ReferenceType":"Issues","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","NumA","NumB","DateA","DateB","DescriptionA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","ClassC","ClassD","NumB","DateA","DateB","Status"]},"Columns":[{"ColumnName":"ClassA","LabelText":"申請種別","ValidateRequired":true,"ChoicesText":"[[{{app_type_site_id}}]]"},{"ColumnName":"ClassB","LabelText":"出張種別","ChoicesText":"日帰り\n宿泊\n海外","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"部署","ValidateRequired":true,"ChoicesText":"[[{{dept_site_id}}]]"},{"ColumnName":"ClassD","LabelText":"出張先","ValidateRequired":true},{"ColumnName":"ClassE","LabelText":"現在の承認者"},{"ColumnName":"NumA","LabelText":"承認段階"},{"ColumnName":"NumB","LabelText":"合計金額"},{"ColumnName":"DateA","LabelText":"出張開始日","ValidateRequired":true},{"ColumnName":"DateB","LabelText":"出張終了日","ValidateRequired":true},{"ColumnName":"DescriptionA","LabelText":"出張目的","ValidateRequired":true}]}}'
+
+  # --- 2. 出張明細（Results型）---
+  - name: create-detail
+    command: site create
+    depends_on: [create-header]
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"出張明細","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","NumA","DateA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","NumA","DateA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"出張申請ヘッダ","ValidateRequired":true,"ChoicesText":"[[{{create-header.Id}}]]"},{"ColumnName":"ClassB","LabelText":"費目区分","ChoicesText":"交通費\n宿泊費\n日当\nその他","ValidateRequired":true},{"ColumnName":"NumA","LabelText":"金額","ValidateRequired":true},{"ColumnName":"DateA","LabelText":"利用日","ValidateRequired":true}]}}'
+
+  # ==========================================================
+  # Phase 2: リンク設定（site update で SiteSettings 全体を記述）
+  # ==========================================================
+
+  # --- 出張申請ヘッダ: ClassA→申請種別, ClassC→部署 ---
+  - name: setup-header-links
+    command: "site update {{create-header.Id}}"
+    depends_on: [create-header]
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","NumA","NumB","DateA","DateB","DescriptionA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","ClassC","ClassD","NumB","DateA","DateB","Status"]},"Columns":[{"ColumnName":"ClassA","LabelText":"申請種別","ValidateRequired":true,"ChoicesText":"[[{{app_type_site_id}}]]"},{"ColumnName":"ClassB","LabelText":"出張種別","ChoicesText":"日帰り\n宿泊\n海外","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"部署","ValidateRequired":true,"ChoicesText":"[[{{dept_site_id}}]]"},{"ColumnName":"ClassD","LabelText":"出張先","ValidateRequired":true},{"ColumnName":"ClassE","LabelText":"現在の承認者"},{"ColumnName":"NumA","LabelText":"承認段階"},{"ColumnName":"NumB","LabelText":"合計金額"},{"ColumnName":"DateA","LabelText":"出張開始日","ValidateRequired":true},{"ColumnName":"DateB","LabelText":"出張終了日","ValidateRequired":true},{"ColumnName":"DescriptionA","LabelText":"出張目的","ValidateRequired":true}],"Links":[{"ColumnName":"ClassA","SiteId":{{app_type_site_id}},"LabelText":"申請種別"},{"ColumnName":"ClassC","SiteId":{{dept_site_id}},"LabelText":"部署"}]}}'
+
+  # --- 出張明細: ClassA → 出張申請ヘッダ ---
+  - name: setup-detail-links
+    command: "site update {{create-detail.Id}}"
+    depends_on: [create-detail, create-header]
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","NumA","DateA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","NumA","DateA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"出張申請ヘッダ","ValidateRequired":true,"ChoicesText":"[[{{create-header.Id}}]]"},{"ColumnName":"ClassB","LabelText":"費目区分","ChoicesText":"交通費\n宿泊費\n日当\nその他","ValidateRequired":true},{"ColumnName":"NumA","LabelText":"金額","ValidateRequired":true},{"ColumnName":"DateA","LabelText":"利用日","ValidateRequired":true}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-header.Id}},"LabelText":"出張申請ヘッダ"}]}}'

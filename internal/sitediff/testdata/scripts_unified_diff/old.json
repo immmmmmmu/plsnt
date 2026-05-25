@@ -1,0 +1,22 @@
+{
+  "HeaderInfo": {},
+  "Sites": [
+    {
+      "SiteId": 100, "Title": "Scripted", "ParentId": 1, "ReferenceType": "Results",
+      "SiteSettings": {
+        "Scripts": [
+          {
+            "Id": 1,
+            "Title": "amount-helper",
+            "Body": "// auto-fills amount\nfunction calc(price, qty) {\n  return price * qty;\n}\n"
+          },
+          {
+            "Id": 2,
+            "Title": "obsolete",
+            "Body": "console.log('removed');\n"
+          }
+        ]
+      }
+    }
+  ]
+}

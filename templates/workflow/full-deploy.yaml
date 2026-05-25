@@ -1,0 +1,114 @@
+name: workflow-full-deploy
+description: "共通事務フローアプリ - フルデプロイ（マスタ5テーブル+申請3テーブル+リンク設定）"
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. plsnt workflow deploy --folder-id N で親 SiteId を指定
+  #      (batch run で実行する場合は --var folder_id=N)
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+steps:
+  # ==========================================================
+  # Phase 1: マスタテーブル作成（common-masters.yaml と同一）
+  # ==========================================================
+
+  # --- 1. 部署マスタ（Results型）---
+  - name: create-dept
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"部署マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","Title","ClassB","Body"]},"Columns":[{"ColumnName":"ClassA","LabelText":"部署コード","ValidateRequired":true,"NoDuplication":true},{"ColumnName":"ClassB","LabelText":"親部署コード"}]}}'
+
+  # --- 2. 役職マスタ（Results型）---
+  - name: create-position
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"役職マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","Title","NumA","NumB","Body"]},"Columns":[{"ColumnName":"ClassA","LabelText":"役職コード","ValidateRequired":true,"NoDuplication":true},{"ColumnName":"NumA","LabelText":"承認上限額"},{"ColumnName":"NumB","LabelText":"役職レベル"}]}}'
+
+  # --- 3. 申請種別マスタ（Results型）---
+  - name: create-app-type
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"申請種別マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","Title","CheckA","ClassB","DescriptionA","Body"]},"Columns":[{"ColumnName":"ClassA","LabelText":"種別コード","ValidateRequired":true,"NoDuplication":true},{"ColumnName":"CheckA","LabelText":"必須添付"},{"ColumnName":"ClassB","LabelText":"承認ルール紐付け"},{"ColumnName":"DescriptionA","LabelText":"支払区分選択肢"}]}}'
+
+  # --- 4. 承認ルールマスタ（Results型）---
+  - name: create-approval-rule
+    command: site create
+    depends_on: [create-app-type]
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"承認ルールマスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["Title","NumA","NumB","ClassA","ClassB","NumC","ClassC","ClassD","ClassE","NumD","Body"]},"Columns":[{"ColumnName":"NumA","LabelText":"金額下限"},{"ColumnName":"NumB","LabelText":"金額上限"},{"ColumnName":"ClassA","LabelText":"対象部署コード"},{"ColumnName":"ClassB","LabelText":"対象申請種別","ChoicesText":"[[{{create-app-type.Id}}]]"},{"ColumnName":"NumC","LabelText":"承認段数","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"第1承認者指定","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"第2承認者指定"},{"ColumnName":"ClassE","LabelText":"第3承認者指定"},{"ColumnName":"NumD","LabelText":"優先度"}]}}'
+
+  # --- 5. 取引先マスタ（Results型）---
+  - name: create-vendor
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"取引先マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["Title","ClassA","DescriptionA","ClassB","ClassC","DescriptionB","Body"]},"Columns":[{"ColumnName":"ClassA","LabelText":"取引先コード","NoDuplication":true},{"ColumnName":"DescriptionA","LabelText":"住所"},{"ColumnName":"ClassB","LabelText":"担当者名"},{"ColumnName":"ClassC","LabelText":"電話番号"},{"ColumnName":"DescriptionB","LabelText":"口座情報"}]}}'
+
+  # ==========================================================
+  # Phase 2: 申請テーブル作成（expense-app.yaml と同一、リンク用ChoicesTextを初期設定）
+  # ==========================================================
+
+  # --- 6. 申請ヘッダ（Issues型）---
+  - name: create-header
+    command: site create
+    depends_on: [create-dept, create-app-type, create-vendor]
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"申請ヘッダ","ReferenceType":"Issues","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","NumA","NumB","NumC","DateA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","ClassC","NumB","Status","CompletionTime"]},"Columns":[{"ColumnName":"ClassA","LabelText":"申請種別","ValidateRequired":true,"ChoicesText":"[[{{create-app-type.Id}}]]"},{"ColumnName":"ClassB","LabelText":"支払区分","ChoicesText":"立替払い\n仮払い\n会社カード利用\n請求書支払い","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"申請部署","ValidateRequired":true,"ChoicesText":"[[{{create-dept.Id}}]]"},{"ColumnName":"ClassD","LabelText":"取引先","ChoicesText":"[[{{create-vendor.Id}}]]"},{"ColumnName":"ClassE","LabelText":"現在の承認者"},{"ColumnName":"ClassF","LabelText":"税区分","ChoicesText":"税込\n税抜"},{"ColumnName":"NumA","LabelText":"承認段階"},{"ColumnName":"NumB","LabelText":"合計金額","ValidateRequired":true},{"ColumnName":"NumC","LabelText":"概算金額"},{"ColumnName":"DateA","LabelText":"精算期限"}]}}'
+
+  # --- 7. 申請明細（Results型）---
+  - name: create-detail
+    command: site create
+    depends_on: [create-header]
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"申請明細","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","NumA","NumB","ClassB","ClassC","DateA","ClassD"]},"GridColumnHash":{"General":["Title","ClassA","NumA","ClassB","DateA","ClassD"]},"Columns":[{"ColumnName":"ClassA","LabelText":"申請ヘッダ","ValidateRequired":true,"ChoicesText":"[[{{create-header.Id}}]]"},{"ColumnName":"NumA","LabelText":"金額","ValidateRequired":true},{"ColumnName":"NumB","LabelText":"税率"},{"ColumnName":"ClassB","LabelText":"税区分","ChoicesText":"税込\n税抜"},{"ColumnName":"ClassC","LabelText":"支払先"},{"ColumnName":"DateA","LabelText":"利用日","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"用途","ChoicesText":"交通費\n飲食\n消耗品\n通信費\n宿泊費\nその他"}]}}'
+
+  # --- 8. 承認履歴（Results型）---
+  - name: create-history
+    command: site create
+    depends_on: [create-header]
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"承認履歴","ReferenceType":"Results","SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","NumA","NumB","DateA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","NumB","DateA"]},"Columns":[{"ColumnName":"Title","LabelText":"アクション","ChoicesText":"承認\n差戻\n却下\n経路設定"},{"ColumnName":"ClassA","LabelText":"申請ヘッダ","ValidateRequired":true,"ChoicesText":"[[{{create-header.Id}}]]"},{"ColumnName":"ClassB","LabelText":"承認者名","ValidateRequired":true},{"ColumnName":"NumA","LabelText":"承認者ID"},{"ColumnName":"NumB","LabelText":"承認段階"},{"ColumnName":"DateA","LabelText":"アクション日時","ValidateRequired":true}]}}'
+
+  # ==========================================================
+  # Phase 3: リンク設定（site update で SiteSettings 全体を記述）
+  # scaffold-shift-management-v3.yaml Phase 4 パターン準拠
+  # ==========================================================
+
+  # --- 承認ルールマスタ: ClassB → 申請種別マスタ ---
+  - name: setup-approval-rule-links
+    command: "site update {{create-approval-rule.Id}}"
+    depends_on: [create-approval-rule, create-app-type]
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["Title","NumA","NumB","ClassA","ClassB","NumC","ClassC","ClassD","ClassE","NumD","Body"]},"Columns":[{"ColumnName":"NumA","LabelText":"金額下限"},{"ColumnName":"NumB","LabelText":"金額上限"},{"ColumnName":"ClassA","LabelText":"対象部署コード"},{"ColumnName":"ClassB","LabelText":"対象申請種別","ChoicesText":"[[{{create-app-type.Id}}]]"},{"ColumnName":"NumC","LabelText":"承認段数","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"第1承認者指定","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"第2承認者指定"},{"ColumnName":"ClassE","LabelText":"第3承認者指定"},{"ColumnName":"NumD","LabelText":"優先度"}],"Links":[{"ColumnName":"ClassB","SiteId":{{create-app-type.Id}},"LabelText":"対象申請種別"}]}}'
+
+  # --- 申請ヘッダ: ClassA→申請種別, ClassC→部署, ClassD→取引先 ---
+  - name: setup-header-links
+    command: "site update {{create-header.Id}}"
+    depends_on: [create-header, create-app-type, create-dept, create-vendor]
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","NumA","NumB","NumC","DateA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","ClassC","NumB","Status","CompletionTime"]},"Columns":[{"ColumnName":"ClassA","LabelText":"申請種別","ValidateRequired":true,"ChoicesText":"[[{{create-app-type.Id}}]]"},{"ColumnName":"ClassB","LabelText":"支払区分","ChoicesText":"立替払い\n仮払い\n会社カード利用\n請求書支払い","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"申請部署","ValidateRequired":true,"ChoicesText":"[[{{create-dept.Id}}]]"},{"ColumnName":"ClassD","LabelText":"取引先","ChoicesText":"[[{{create-vendor.Id}}]]"},{"ColumnName":"ClassE","LabelText":"現在の承認者"},{"ColumnName":"ClassF","LabelText":"税区分","ChoicesText":"税込\n税抜"},{"ColumnName":"NumA","LabelText":"承認段階"},{"ColumnName":"NumB","LabelText":"合計金額","ValidateRequired":true},{"ColumnName":"NumC","LabelText":"概算金額"},{"ColumnName":"DateA","LabelText":"精算期限"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-app-type.Id}},"LabelText":"申請種別"},{"ColumnName":"ClassC","SiteId":{{create-dept.Id}},"LabelText":"申請部署"},{"ColumnName":"ClassD","SiteId":{{create-vendor.Id}},"LabelText":"取引先"}]}}'
+
+  # --- 申請明細: ClassA → 申請ヘッダ ---
+  - name: setup-detail-links
+    command: "site update {{create-detail.Id}}"
+    depends_on: [create-detail, create-header]
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","NumA","NumB","ClassB","ClassC","DateA","ClassD"]},"GridColumnHash":{"General":["Title","ClassA","NumA","ClassB","DateA","ClassD"]},"Columns":[{"ColumnName":"ClassA","LabelText":"申請ヘッダ","ValidateRequired":true,"ChoicesText":"[[{{create-header.Id}}]]"},{"ColumnName":"NumA","LabelText":"金額","ValidateRequired":true},{"ColumnName":"NumB","LabelText":"税率"},{"ColumnName":"ClassB","LabelText":"税区分","ChoicesText":"税込\n税抜"},{"ColumnName":"ClassC","LabelText":"支払先"},{"ColumnName":"DateA","LabelText":"利用日","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"用途","ChoicesText":"交通費\n飲食\n消耗品\n通信費\n宿泊費\nその他"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-header.Id}},"LabelText":"申請ヘッダ"}]}}'
+
+  # --- 承認履歴: ClassA → 申請ヘッダ ---
+  - name: setup-history-links
+    command: "site update {{create-history.Id}}"
+    depends_on: [create-history, create-header]
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["Title"],"EditorColumnHash":{"General":["ClassA","ClassB","NumA","NumB","DateA"]},"GridColumnHash":{"General":["Title","ClassA","ClassB","NumB","DateA"]},"Columns":[{"ColumnName":"Title","LabelText":"アクション","ChoicesText":"承認\n差戻\n却下\n経路設定"},{"ColumnName":"ClassA","LabelText":"申請ヘッダ","ValidateRequired":true,"ChoicesText":"[[{{create-header.Id}}]]"},{"ColumnName":"ClassB","LabelText":"承認者名","ValidateRequired":true},{"ColumnName":"NumA","LabelText":"承認者ID"},{"ColumnName":"NumB","LabelText":"承認段階"},{"ColumnName":"DateA","LabelText":"アクション日時","ValidateRequired":true}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-header.Id}},"LabelText":"申請ヘッダ"}]}}'

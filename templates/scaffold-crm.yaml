@@ -1,0 +1,33 @@
+name: scaffold-crm
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. 実行時に親 SiteId を指定:
+  #        plsnt batch run     → --var folder_id=N
+  #        plsnt workflow deploy → --folder-id N
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+steps:
+  - name: create-customer-master
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"顧客マスタ","ReferenceType":"Results","SiteSettings":{"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD"]},"Columns":[{"ColumnName":"ClassA","LabelText":"会社名"},{"ColumnName":"ClassB","LabelText":"担当者"},{"ColumnName":"ClassC","LabelText":"電話番号"},{"ColumnName":"ClassD","LabelText":"メール"}]}}'
+
+  - name: create-deal-table
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"案件管理","ReferenceType":"Issues","SiteSettings":{"EditorColumnHash":{"General":["ClassA","NumA","Status","CompletionTime"]},"Columns":[{"ColumnName":"ClassA","LabelText":"顧客"},{"ColumnName":"NumA","LabelText":"案件金額"}]}}'
+    depends_on: [create-customer-master]
+
+  - name: create-activity-log
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"活動履歴","ReferenceType":"Results","SiteSettings":{"EditorColumnHash":{"General":["ClassA","ClassB","DateA","DescriptionA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"活動種別"},{"ColumnName":"ClassB","LabelText":"顧客"},{"ColumnName":"DateA","LabelText":"活動日"},{"ColumnName":"DescriptionA","LabelText":"メモ"}]}}'
+    depends_on: [create-customer-master]

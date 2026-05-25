@@ -1,0 +1,84 @@
+# Build binaries
+plsnt
+*.exe
+bin/
+
+# GoReleaser output
+dist/
+
+# Secrets / environment
+.mcp.json
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.p12
+credentials.json
+service-account*.json
+.netrc
+.npmrc
+
+# Screenshots
+*.png
+
+# Temporary files
+/tmp/
+
+# Test/bug reports (development logs, not for distribution)
+test-report*.md
+bug-report*.md
+coverage.out
+coverage.html
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Backup / leftover files
+*.bak
+*~
+*.orig
+*.rej
+
+# Go vendor (if used)
+vendor/
+
+# Local Claude Code overrides
+.claude/settings.local.json
+
+# === Business confidential / internal-only docs (NOT for OSS publication) ===
+# Planning document (株式会社HereNow internal)
+docs/plsnt - Pleasanter CLI ツール 企画書.md
+
+# Shopping model (temporarily withheld — publication strategy TBD)
+scripts/shopping/
+templates/scaffold-shopping.yaml
+templates/scaffold-shopping-v2.yaml
+
+# Paid knowledge (Tier 2 commercial content)
+docs/paid-knowledge/
+
+# Internal proposals
+docs/proposal-*.md
+
+# Domain knowledge with internal business examples
+docs/pleasanter-ai-agent-workflow-v05.md
+
+# Development context notes
+docs/dev/
+
+# === Development process artifacts (specs/tasks/design — kept internal) ===
+docs/spec/
+docs/design/
+docs/tasks/
+docs/implements/
+.specify/
+
+# === Site packages with potentially environment-specific data ===
+sitepackage/workflow-v1.0.json
+sitepackage/workflow-v2.0.json
+sitepackage/ワークフロー*.json

@@ -1,0 +1,3 @@
+ClassA,Title,CheckA,DescriptionA
+EXP,立替・支出依頼,true,立替払い\n仮払い\n会社カード利用\n請求書支払い
+ADV,仮払い申請,false,仮払い

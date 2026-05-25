@@ -1,0 +1,30 @@
+{
+  "modified": [
+    {
+      "site_id": 100,
+      "title": "顧客マスタ",
+      "changes": [
+        {
+          "path": "Sites[SiteId=100].SiteSettings.Columns[ColumnName=ClassA].LabelText",
+          "kind": "modified",
+          "old_value": "顧客コード",
+          "new_value": "顧客ID"
+        },
+        {
+          "path": "Sites[SiteId=100].SiteSettings.Columns[ColumnName=NumA].LabelText",
+          "kind": "modified",
+          "old_value": "売上",
+          "new_value": "年間売上"
+        },
+        {
+          "path": "Sites[SiteId=100].SiteSettings.Columns[3]",
+          "kind": "added",
+          "new_value": {
+            "ColumnName": "ClassC",
+            "LabelText": "区分"
+          }
+        }
+      ]
+    }
+  ]
+}

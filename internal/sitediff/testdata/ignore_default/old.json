@@ -1,0 +1,16 @@
+{
+  "HeaderInfo": {
+    "AssemblyVersion": "1.5.2.0",
+    "BaseSiteId": 100,
+    "PackageTime": "2026-04-01T00:00:00",
+    "Server": "http://localhost",
+    "CreatorName": "Administrator"
+  },
+  "Sites": [
+    {
+      "SiteId": 100, "TenantId": 1, "Title": "Same", "ParentId": 1, "ReferenceType": "Results",
+      "Creator": 2, "Updator": 2, "CreatedTime": "2026-01-01", "UpdatedTime": "2026-01-15",
+      "SiteSettings": {"Version": 1.017}
+    }
+  ]
+}

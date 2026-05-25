@@ -1,0 +1,26 @@
+name: scaffold-task-management
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. 実行時に親 SiteId を指定:
+  #        plsnt batch run     → --var folder_id=N
+  #        plsnt workflow deploy → --folder-id N
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+steps:
+  - name: create-project-master
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"プロジェクト","ReferenceType":"Results","SiteSettings":{"EditorColumnHash":{"General":["ClassA","DateA","DateB"]},"Columns":[{"ColumnName":"ClassA","LabelText":"責任者"},{"ColumnName":"DateA","LabelText":"開始日"},{"ColumnName":"DateB","LabelText":"終了日"}]}}'
+
+  - name: create-task-table
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"タスク","ReferenceType":"Issues","SiteSettings":{"EditorColumnHash":{"General":["ClassA","ClassB","Status","CompletionTime"]},"Columns":[{"ColumnName":"ClassA","LabelText":"プロジェクト"},{"ColumnName":"ClassB","LabelText":"担当者"}]}}'
+    depends_on: [create-project-master]

@@ -1,0 +1,35 @@
+{
+  "modified": [
+    {
+      "site_id": 100,
+      "title": "Scripted",
+      "changes": [
+        {
+          "path": "Sites[SiteId=100].SiteSettings.Scripts[1]",
+          "kind": "removed",
+          "old_value": {
+            "Body": "console.log('removed');\n",
+            "Id": 2,
+            "Title": "obsolete"
+          }
+        },
+        {
+          "path": "Sites[SiteId=100].SiteSettings.Scripts[Title=amount-helper].Body",
+          "kind": "text_diff",
+          "old_value": "// auto-fills amount\nfunction calc(price, qty) {\n  return price * qty;\n}\n",
+          "new_value": "// auto-fills amount, with discount\nfunction calc(price, qty, discount) {\n  return price * qty * (1 - discount);\n}\n",
+          "unified_diff": "--- old\n+++ new\n@@ -1,5 +1,5 @@\n-// auto-fills amount\n-function calc(price, qty) {\n-  return price * qty;\n+// auto-fills amount, with discount\n+function calc(price, qty, discount) {\n+  return price * qty * (1 - discount);\n }\n \n"
+        },
+        {
+          "path": "Sites[SiteId=100].SiteSettings.Scripts[1]",
+          "kind": "added",
+          "new_value": {
+            "Body": "// brand-new validator\n",
+            "Id": 3,
+            "Title": "validator"
+          }
+        }
+      ]
+    }
+  ]
+}

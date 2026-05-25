@@ -1,0 +1,107 @@
+name: scaffold-library
+description: "図書貸出管理 - 9テーブル構成（ジャンル・出版社・利用者・書架・書籍・貸出・貸出明細・返却・蔵書）"
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. 実行時に親 SiteId を指定:
+  #        plsnt batch run     → --var folder_id=N
+  #        plsnt workflow deploy → --folder-id N
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+steps:
+  # --- Phase 1: マスタテーブル作成（リンク不要）---
+  - name: create-genres
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"ジャンルマスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"ジャンル名"}]}}'
+
+  - name: create-publishers
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"出版社マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"出版社名"}]}}'
+
+  - name: create-members
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"利用者マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","DescriptionA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"利用者名"},{"ColumnName":"ClassB","LabelText":"電話番号"},{"ColumnName":"ClassC","LabelText":"メールアドレス"},{"ColumnName":"DescriptionA","LabelText":"住所"}]}}'
+
+  - name: create-shelves
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"書架マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC"]},"Columns":[{"ColumnName":"ClassA","LabelText":"書架名"},{"ColumnName":"ClassB","LabelText":"フロア"},{"ColumnName":"ClassC","LabelText":"備考"}]}}'
+
+  # --- Phase 2: 書籍マスタ（ジャンル・出版社リンク）---
+  - name: create-books
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"書籍マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","NumA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"書名"},{"ColumnName":"ClassB","LabelText":"ジャンル","ChoicesText":"[[{{create-genres.Id}}]]"},{"ColumnName":"ClassC","LabelText":"ISBN"},{"ColumnName":"ClassD","LabelText":"出版社","ChoicesText":"[[{{create-publishers.Id}}]]"},{"ColumnName":"NumA","LabelText":"定価"}]}}'
+    depends_on: [create-genres, create-publishers]
+
+  # --- Phase 3: トランザクション・明細テーブル ---
+  - name: create-lendings
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"貸出","ReferenceType":"Issues","SiteSettings":{"TitleColumns":["DateA"],"EditorColumnHash":{"General":["DateA","ClassA","NumA","Status"]},"Columns":[{"ColumnName":"DateA","LabelText":"貸出日"},{"ColumnName":"ClassA","LabelText":"利用者","ChoicesText":"[[{{create-members.Id}}]]"},{"ColumnName":"NumA","LabelText":"貸出冊数"}]}}'
+    depends_on: [create-members]
+
+  - name: create-lending-items
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"貸出明細","ReferenceType":"Results","SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","DescriptionA","NumA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"貸出","ChoicesText":"[[{{create-lendings.Id}}]]"},{"ColumnName":"ClassB","LabelText":"書籍","ChoicesText":"[[{{create-books.Id}}]]"},{"ColumnName":"DescriptionA","LabelText":"明細名"},{"ColumnName":"NumA","LabelText":"数量"}]}}'
+    depends_on: [create-lendings, create-books]
+
+  - name: create-returns
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"返却","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassB"],"EditorColumnHash":{"General":["ClassA","ClassB","DateA","NumA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"貸出","ChoicesText":"[[{{create-lendings.Id}}]]"},{"ColumnName":"ClassB","LabelText":"返却状態"},{"ColumnName":"DateA","LabelText":"返却日"},{"ColumnName":"NumA","LabelText":"延滞日数"}]}}'
+    depends_on: [create-lendings]
+
+  - name: create-collections
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"蔵書","ReferenceType":"Results","SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","DescriptionA","NumA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"書架","ChoicesText":"[[{{create-shelves.Id}}]]"},{"ColumnName":"ClassB","LabelText":"書籍","ChoicesText":"[[{{create-books.Id}}]]"},{"ColumnName":"DescriptionA","LabelText":"蔵書名"},{"ColumnName":"NumA","LabelText":"所蔵数"}]}}'
+    depends_on: [create-shelves, create-books]
+
+  # --- Phase 4: リンク設定（カラム設定を保持しつつ Links を追加）---
+  - name: setup-books-links
+    command: "site update {{create-books.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","NumA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"書名"},{"ColumnName":"ClassB","LabelText":"ジャンル","ChoicesText":"[[{{create-genres.Id}}]]"},{"ColumnName":"ClassC","LabelText":"ISBN"},{"ColumnName":"ClassD","LabelText":"出版社","ChoicesText":"[[{{create-publishers.Id}}]]"},{"ColumnName":"NumA","LabelText":"定価"}],"Links":[{"ColumnName":"ClassB","SiteId":{{create-genres.Id}},"LabelText":"ジャンル"},{"ColumnName":"ClassD","SiteId":{{create-publishers.Id}},"LabelText":"出版社"}]}}'
+    depends_on: [create-books, create-genres, create-publishers]
+
+  - name: setup-lendings-links
+    command: "site update {{create-lendings.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["DateA"],"EditorColumnHash":{"General":["DateA","ClassA","NumA","Status"]},"Columns":[{"ColumnName":"DateA","LabelText":"貸出日"},{"ColumnName":"ClassA","LabelText":"利用者","ChoicesText":"[[{{create-members.Id}}]]"},{"ColumnName":"NumA","LabelText":"貸出冊数"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-members.Id}},"LabelText":"利用者"}]}}'
+    depends_on: [create-lendings, create-members]
+
+  - name: setup-lending-items-links
+    command: "site update {{create-lending-items.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","DescriptionA","NumA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"貸出","ChoicesText":"[[{{create-lendings.Id}}]]"},{"ColumnName":"ClassB","LabelText":"書籍","ChoicesText":"[[{{create-books.Id}}]]"},{"ColumnName":"DescriptionA","LabelText":"明細名"},{"ColumnName":"NumA","LabelText":"数量"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-lendings.Id}},"LabelText":"貸出"},{"ColumnName":"ClassB","SiteId":{{create-books.Id}},"LabelText":"書籍"}]}}'
+    depends_on: [create-lending-items, create-lendings, create-books]
+
+  - name: setup-returns-links
+    command: "site update {{create-returns.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["ClassB"],"EditorColumnHash":{"General":["ClassA","ClassB","DateA","NumA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"貸出","ChoicesText":"[[{{create-lendings.Id}}]]"},{"ColumnName":"ClassB","LabelText":"返却状態"},{"ColumnName":"DateA","LabelText":"返却日"},{"ColumnName":"NumA","LabelText":"延滞日数"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-lendings.Id}},"LabelText":"貸出"}]}}'
+    depends_on: [create-returns, create-lendings]
+
+  - name: setup-collections-links
+    command: "site update {{create-collections.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","DescriptionA","NumA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"書架","ChoicesText":"[[{{create-shelves.Id}}]]"},{"ColumnName":"ClassB","LabelText":"書籍","ChoicesText":"[[{{create-books.Id}}]]"},{"ColumnName":"DescriptionA","LabelText":"蔵書名"},{"ColumnName":"NumA","LabelText":"所蔵数"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-shelves.Id}},"LabelText":"書架"},{"ColumnName":"ClassB","SiteId":{{create-books.Id}},"LabelText":"書籍"}]}}'
+    depends_on: [create-collections, create-shelves, create-books]

@@ -1,0 +1,119 @@
+# .goreleaser.yaml
+# GoReleaser configuration for plsnt
+# Docs: https://goreleaser.com/customization/
+
+version: 2
+
+project_name: plsnt
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: plsnt
+    main: .
+    binary: plsnt
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # windows/arm64 は除外（実用性が低い）
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/immmmmmmu/plsnt/cmd/version.Version={{.Version}}
+      - -X github.com/immmmmmmu/plsnt/cmd/version.Commit={{.ShortCommit}}
+      - -X github.com/immmmmmmu/plsnt/cmd/version.Date={{.Date}}
+    mod_timestamp: "{{.CommitTimestamp}}"
+
+archives:
+  - id: default
+    builds:
+      - plsnt
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    # linux / darwin は tar.gz（デフォルト）
+    formats:
+      - tar.gz
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: "Features"
+      regexp: "^feat"
+      order: 0
+    - title: "Bug Fixes"
+      regexp: "^fix"
+      order: 1
+    - title: "Performance"
+      regexp: "^perf"
+      order: 2
+    - title: "Refactoring"
+      regexp: "^refactor"
+      order: 3
+    - title: "Documentation"
+      regexp: "^docs"
+      order: 4
+    - title: "Testing"
+      regexp: "^test"
+      order: 5
+    - title: "CI/CD & Chores"
+      regexp: "^(ci|chore|build)"
+      order: 6
+    - title: "Other"
+      order: 99
+  filters:
+    exclude:
+      - "^Merge"
+      - "^merge"
+      - "^wip"
+      - "^WIP"
+
+release:
+  github:
+    owner: immmmmmmu
+    name: plsnt
+  draft: false
+  prerelease: auto
+  name_template: "v{{.Version}}"
+  # release notes はchangelogのみ（READMEの特徴セクションは引用しない）
+  header: ""
+  footer: ""
+
+# Homebrew tap（オプション: immmmmmmu/homebrew-tap が存在する場合に有効化）
+# brews:
+#   - name: plsnt
+#     repository:
+#       owner: immmmmmmu
+#       name: homebrew-tap
+#     homepage: https://github.com/immmmmmmu/plsnt
+#     description: "Pleasanter REST API CLI tool"
+#     license: "AGPL-3.0"
+#     install: |
+#       bin.install "plsnt"
+#     test: |
+#       system "#{bin}/plsnt", "--version"

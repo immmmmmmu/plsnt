@@ -1,0 +1,82 @@
+name: scaffold-shift-management
+description: "警備シフト管理システム v2 - 6テーブル構成（定常/スポット/期間/除外対応）"
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. 実行時に親 SiteId を指定:
+  #        plsnt batch run     → --var folder_id=N
+  #        plsnt workflow deploy → --folder-id N
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+steps:
+  # --- Phase 1: マスタテーブル作成（リンク不要）---
+  - name: create-qualifications
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"資格マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA","DescriptionA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"資格名","ValidateRequired":true},{"ColumnName":"DescriptionA","LabelText":"説明"}]}}'
+
+  - name: create-sites
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"現場マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","DateA","DateB","CheckA","DescriptionA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"現場名","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"住所"},{"ColumnName":"ClassC","LabelText":"担当者名"},{"ColumnName":"ClassD","LabelText":"電話番号"},{"ColumnName":"ClassE","LabelText":"契約種別","ChoicesText":"定常契約\nスポット\n期間契約"},{"ColumnName":"DateA","LabelText":"契約開始日"},{"ColumnName":"DateB","LabelText":"契約終了日"},{"ColumnName":"CheckA","LabelText":"稼働中"},{"ColumnName":"DescriptionA","LabelText":"特記事項"}]}}'
+
+  - name: create-guards
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"警備員マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","CheckA","DescriptionA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"氏名","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"社員番号","NoDuplication":true},{"ColumnName":"ClassC","LabelText":"電話番号"},{"ColumnName":"ClassD","LabelText":"メールアドレス"},{"ColumnName":"ClassE","LabelText":"保有資格","ChoicesText":"[[{{create-qualifications.Id}}]]"},{"ColumnName":"ClassF","LabelText":"雇用形態","ChoicesText":"正社員\n契約社員\nパート\nアルバイト"},{"ColumnName":"CheckA","LabelText":"稼働可否"},{"ColumnName":"DescriptionA","LabelText":"備考"}]}}'
+    depends_on: [create-qualifications]
+
+  # --- Phase 2: 中間テーブル（マスタへのリンク）---
+  - name: create-site-slots
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"現場シフト枠","ReferenceType":"Results","SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","DateA","DateB","DateC","DateD","DateE","NumA","NumB","CheckA","DescriptionA","DescriptionB"]},"Columns":[{"ColumnName":"ClassA","LabelText":"現場","ChoicesText":"[[{{create-sites.Id}}]]","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"枠種別","ChoicesText":"定常\nスポット\n期間\n除外","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"時間帯区分","ChoicesText":"日勤\n夜勤\n24時間\nその他"},{"ColumnName":"ClassD","LabelText":"曜日パターン","ChoicesText":"月〜金\n土日\n月\n火\n水\n木\n金\n土\n日\n毎日\n指定なし"},{"ColumnName":"ClassE","LabelText":"必要資格","ChoicesText":"[[{{create-qualifications.Id}}]]"},{"ColumnName":"DateA","LabelText":"開始時刻"},{"ColumnName":"DateB","LabelText":"終了時刻"},{"ColumnName":"DateC","LabelText":"適用開始日"},{"ColumnName":"DateD","LabelText":"適用終了日"},{"ColumnName":"DateE","LabelText":"特定日"},{"ColumnName":"NumA","LabelText":"必要人数"},{"ColumnName":"NumB","LabelText":"優先度"},{"ColumnName":"CheckA","LabelText":"有効"},{"ColumnName":"DescriptionA","LabelText":"枠名"},{"ColumnName":"DescriptionB","LabelText":"適用メモ"}]}}'
+    depends_on: [create-sites, create-qualifications]
+
+  - name: create-availability
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"稼働可能枠","ReferenceType":"Results","SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","DateA","DateB","DateC","DateD","DateE","NumA","CheckA","DescriptionA","DescriptionB"]},"Columns":[{"ColumnName":"ClassA","LabelText":"警備員","ChoicesText":"[[{{create-guards.Id}}]]","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"枠種別","ChoicesText":"定常\n追加\n除外","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"時間帯区分","ChoicesText":"日勤\n夜勤\n24時間\nその他"},{"ColumnName":"ClassD","LabelText":"曜日パターン","ChoicesText":"月〜金\n土日\n月\n火\n水\n木\n金\n土\n日\n毎日\n指定なし"},{"ColumnName":"DateA","LabelText":"開始時刻"},{"ColumnName":"DateB","LabelText":"終了時刻"},{"ColumnName":"DateC","LabelText":"適用開始日"},{"ColumnName":"DateD","LabelText":"適用終了日"},{"ColumnName":"DateE","LabelText":"特定日"},{"ColumnName":"NumA","LabelText":"優先度"},{"ColumnName":"CheckA","LabelText":"有効"},{"ColumnName":"DescriptionA","LabelText":"枠名"},{"ColumnName":"DescriptionB","LabelText":"適用メモ"}]}}'
+    depends_on: [create-guards]
+
+  # --- Phase 3: トランザクション（シフト割当）---
+  - name: create-shift-assignments
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"シフト割当","ReferenceType":"Issues","SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","DateA","DateB","DateC","NumA","Status","DescriptionA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"現場","ChoicesText":"[[{{create-sites.Id}}]]","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"警備員","ChoicesText":"[[{{create-guards.Id}}]]","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"現場シフト枠","ChoicesText":"[[{{create-site-slots.Id}}]]"},{"ColumnName":"ClassD","LabelText":"割当種別","ChoicesText":"定常\nスポット\n代替"},{"ColumnName":"ClassE","LabelText":"代替理由","ChoicesText":"病欠\n私用\n急用\n研修\nその他"},{"ColumnName":"ClassF","LabelText":"代替元シフトID"},{"ColumnName":"DateA","LabelText":"シフト日","ValidateRequired":true},{"ColumnName":"DateB","LabelText":"開始時刻"},{"ColumnName":"DateC","LabelText":"終了時刻"},{"ColumnName":"NumA","LabelText":"勤務時間"},{"ColumnName":"DescriptionA","LabelText":"割当名"}]}}'
+    depends_on: [create-sites, create-guards, create-site-slots]
+
+  # --- Phase 4: リンク設定 ---
+  - name: setup-guards-links
+    command: "site update {{create-guards.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","CheckA","DescriptionA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"氏名","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"社員番号","NoDuplication":true},{"ColumnName":"ClassC","LabelText":"電話番号"},{"ColumnName":"ClassD","LabelText":"メールアドレス"},{"ColumnName":"ClassE","LabelText":"保有資格","ChoicesText":"[[{{create-qualifications.Id}}]]"},{"ColumnName":"ClassF","LabelText":"雇用形態","ChoicesText":"正社員\n契約社員\nパート\nアルバイト"},{"ColumnName":"CheckA","LabelText":"稼働可否"},{"ColumnName":"DescriptionA","LabelText":"備考"}],"Links":[{"ColumnName":"ClassE","SiteId":{{create-qualifications.Id}},"LabelText":"保有資格"}]}}'
+    depends_on: [create-guards, create-qualifications]
+
+  - name: setup-site-slots-links
+    command: "site update {{create-site-slots.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","DateA","DateB","DateC","DateD","DateE","NumA","NumB","CheckA","DescriptionA","DescriptionB"]},"Columns":[{"ColumnName":"ClassA","LabelText":"現場","ChoicesText":"[[{{create-sites.Id}}]]","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"枠種別","ChoicesText":"定常\nスポット\n期間\n除外","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"時間帯区分","ChoicesText":"日勤\n夜勤\n24時間\nその他"},{"ColumnName":"ClassD","LabelText":"曜日パターン","ChoicesText":"月〜金\n土日\n月\n火\n水\n木\n金\n土\n日\n毎日\n指定なし"},{"ColumnName":"ClassE","LabelText":"必要資格","ChoicesText":"[[{{create-qualifications.Id}}]]"},{"ColumnName":"DateA","LabelText":"開始時刻"},{"ColumnName":"DateB","LabelText":"終了時刻"},{"ColumnName":"DateC","LabelText":"適用開始日"},{"ColumnName":"DateD","LabelText":"適用終了日"},{"ColumnName":"DateE","LabelText":"特定日"},{"ColumnName":"NumA","LabelText":"必要人数"},{"ColumnName":"NumB","LabelText":"優先度"},{"ColumnName":"CheckA","LabelText":"有効"},{"ColumnName":"DescriptionA","LabelText":"枠名"},{"ColumnName":"DescriptionB","LabelText":"適用メモ"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-sites.Id}},"LabelText":"現場"},{"ColumnName":"ClassE","SiteId":{{create-qualifications.Id}},"LabelText":"必要資格"}]}}'
+    depends_on: [create-site-slots, create-sites, create-qualifications]
+
+  - name: setup-availability-links
+    command: "site update {{create-availability.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","DateA","DateB","DateC","DateD","DateE","NumA","CheckA","DescriptionA","DescriptionB"]},"Columns":[{"ColumnName":"ClassA","LabelText":"警備員","ChoicesText":"[[{{create-guards.Id}}]]","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"枠種別","ChoicesText":"定常\n追加\n除外","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"時間帯区分","ChoicesText":"日勤\n夜勤\n24時間\nその他"},{"ColumnName":"ClassD","LabelText":"曜日パターン","ChoicesText":"月〜金\n土日\n月\n火\n水\n木\n金\n土\n日\n毎日\n指定なし"},{"ColumnName":"DateA","LabelText":"開始時刻"},{"ColumnName":"DateB","LabelText":"終了時刻"},{"ColumnName":"DateC","LabelText":"適用開始日"},{"ColumnName":"DateD","LabelText":"適用終了日"},{"ColumnName":"DateE","LabelText":"特定日"},{"ColumnName":"NumA","LabelText":"優先度"},{"ColumnName":"CheckA","LabelText":"有効"},{"ColumnName":"DescriptionA","LabelText":"枠名"},{"ColumnName":"DescriptionB","LabelText":"適用メモ"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-guards.Id}},"LabelText":"警備員"}]}}'
+    depends_on: [create-availability, create-guards]
+
+  - name: setup-shift-assignments-links
+    command: "site update {{create-shift-assignments.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","DateA","DateB","DateC","NumA","Status","DescriptionA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"現場","ChoicesText":"[[{{create-sites.Id}}]]","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"警備員","ChoicesText":"[[{{create-guards.Id}}]]","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"現場シフト枠","ChoicesText":"[[{{create-site-slots.Id}}]]"},{"ColumnName":"ClassD","LabelText":"割当種別","ChoicesText":"定常\nスポット\n代替"},{"ColumnName":"ClassE","LabelText":"代替理由","ChoicesText":"病欠\n私用\n急用\n研修\nその他"},{"ColumnName":"ClassF","LabelText":"代替元シフトID"},{"ColumnName":"DateA","LabelText":"シフト日","ValidateRequired":true},{"ColumnName":"DateB","LabelText":"開始時刻"},{"ColumnName":"DateC","LabelText":"終了時刻"},{"ColumnName":"NumA","LabelText":"勤務時間"},{"ColumnName":"DescriptionA","LabelText":"割当名"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-sites.Id}},"LabelText":"現場"},{"ColumnName":"ClassB","SiteId":{{create-guards.Id}},"LabelText":"警備員"},{"ColumnName":"ClassC","SiteId":{{create-site-slots.Id}},"LabelText":"現場シフト枠"}]}}'
+    depends_on: [create-shift-assignments, create-sites, create-guards, create-site-slots]

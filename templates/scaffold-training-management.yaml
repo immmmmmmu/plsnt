@@ -1,0 +1,59 @@
+name: scaffold-training-management
+description: "現任教育管理アプリ - 警備業法第21条第2項準拠（基本教育・業務別教育、年度10時間以上）"
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. 実行時に親 SiteId を指定:
+  #        plsnt batch run     → --var folder_id=N
+  #        plsnt workflow deploy → --folder-id N
+  #   4. guards_site_id は既存の警備員マスタ SiteId (--var guards_site_id=M)
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+  guards_site_id: "0"
+steps:
+  # --- Phase 1: 教育科目マスタ ---
+  - name: create-subjects
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"教育科目マスタ","ReferenceType":"Results","SiteSettings":{"TitleColumns":["ClassA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","NumA","DescriptionA"]},"GridColumns":["ClassA","ClassB","ClassC","ClassD","NumA"],"Columns":[{"ColumnName":"ClassA","LabelText":"科目名","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"教育種別","ChoicesText":"基本教育\n業務別教育","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"対象警備区分","ChoicesText":"共通\n1号警備\n2号警備","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"教育方法","ChoicesText":"講義\n実技\n講義・実技"},{"ColumnName":"NumA","LabelText":"標準時間","Unit":"時間"},{"ColumnName":"DescriptionA","LabelText":"科目内容"}]}}'
+
+  # --- Phase 2: 教育実施記録（Issues - ステータス・日時管理） ---
+  - name: create-sessions
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"教育実施記録","ReferenceType":"Issues","SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","ClassG","StartTime","CompletionTime","NumA","Status","CheckA","DescriptionA","DescriptionB"]},"GridColumns":["StartTime","ClassB","ClassC","ClassD","ClassE","NumA","Status"],"Columns":[{"ColumnName":"ClassA","LabelText":"教育科目","ChoicesText":"[[0]]"},{"ColumnName":"ClassB","LabelText":"教育種別","ChoicesText":"基本教育\n業務別教育","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"対象警備区分","ChoicesText":"共通\n1号警備\n2号警備","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"講師名","ValidateRequired":true},{"ColumnName":"ClassE","LabelText":"実施場所","ValidateRequired":true},{"ColumnName":"ClassF","LabelText":"年度","ChoicesText":"2025\n2026\n2027\n2028","ValidateRequired":true},{"ColumnName":"ClassG","LabelText":"教育方法","ChoicesText":"講義\n実技\n講義・実技","ValidateRequired":true},{"ColumnName":"NumA","LabelText":"実施時間数","Unit":"時間","ValidateRequired":true},{"ColumnName":"CheckA","LabelText":"指導教育責任者確認"},{"ColumnName":"DescriptionA","LabelText":"教育実施名"},{"ColumnName":"DescriptionB","LabelText":"教育内容詳細"}]}}'
+    depends_on: [create-subjects]
+
+  # --- Phase 3: 受講記録 ---
+  - name: create-attendance
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"受講記録","ReferenceType":"Results","SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","NumA","CheckA","DescriptionA","DescriptionB"]},"GridColumns":["ClassA","ClassB","ClassC","ClassE","NumA","CheckA"],"Columns":[{"ColumnName":"ClassA","LabelText":"警備員","ChoicesText":"[[{{guards_site_id}}]]","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"教育実施記録","ChoicesText":"[[0]]","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"受講状況","ChoicesText":"受講済\n欠席\n遅刻","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"年度","ChoicesText":"2025\n2026\n2027\n2028"},{"ColumnName":"ClassE","LabelText":"教育種別","ChoicesText":"基本教育\n業務別教育"},{"ColumnName":"NumA","LabelText":"受講時間数","Unit":"時間"},{"ColumnName":"CheckA","LabelText":"指導教育責任者確認"},{"ColumnName":"DescriptionA","LabelText":"受講記録名"},{"ColumnName":"DescriptionB","LabelText":"備考"}]}}'
+    depends_on: [create-sessions]
+
+  # --- Phase 4: リンク設定 ---
+  - name: setup-sessions-links
+    command: "site update {{create-sessions.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","ClassG","StartTime","CompletionTime","NumA","Status","CheckA","DescriptionA","DescriptionB"]},"GridColumns":["StartTime","ClassB","ClassC","ClassD","ClassE","NumA","Status"],"Columns":[{"ColumnName":"ClassA","LabelText":"教育科目","ChoicesText":"[[{{create-subjects.Id}}]]"},{"ColumnName":"ClassB","LabelText":"教育種別","ChoicesText":"基本教育\n業務別教育","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"対象警備区分","ChoicesText":"共通\n1号警備\n2号警備","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"講師名","ValidateRequired":true},{"ColumnName":"ClassE","LabelText":"実施場所","ValidateRequired":true},{"ColumnName":"ClassF","LabelText":"年度","ChoicesText":"2025\n2026\n2027\n2028","ValidateRequired":true},{"ColumnName":"ClassG","LabelText":"教育方法","ChoicesText":"講義\n実技\n講義・実技","ValidateRequired":true},{"ColumnName":"NumA","LabelText":"実施時間数","Unit":"時間","ValidateRequired":true},{"ColumnName":"CheckA","LabelText":"指導教育責任者確認"},{"ColumnName":"DescriptionA","LabelText":"教育実施名"},{"ColumnName":"DescriptionB","LabelText":"教育内容詳細"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-subjects.Id}},"LabelText":"教育科目"}]}}'
+    depends_on: [create-sessions, create-subjects]
+
+  - name: setup-attendance-links
+    command: "site update {{create-attendance.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","NumA","CheckA","DescriptionA","DescriptionB"]},"GridColumns":["ClassA","ClassB","ClassC","ClassE","NumA","CheckA"],"Columns":[{"ColumnName":"ClassA","LabelText":"警備員","ChoicesText":"[[{{guards_site_id}}]]","ValidateRequired":true},{"ColumnName":"ClassB","LabelText":"教育実施記録","ChoicesText":"[[{{create-sessions.Id}}]]","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"受講状況","ChoicesText":"受講済\n欠席\n遅刻","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"年度","ChoicesText":"2025\n2026\n2027\n2028"},{"ColumnName":"ClassE","LabelText":"教育種別","ChoicesText":"基本教育\n業務別教育"},{"ColumnName":"NumA","LabelText":"受講時間数","Unit":"時間"},{"ColumnName":"CheckA","LabelText":"指導教育責任者確認"},{"ColumnName":"DescriptionA","LabelText":"受講記録名"},{"ColumnName":"DescriptionB","LabelText":"備考"}],"Links":[{"ColumnName":"ClassA","SiteId":{{guards_site_id}},"LabelText":"警備員"},{"ColumnName":"ClassB","SiteId":{{create-sessions.Id}},"LabelText":"教育実施記録"}]}}'
+    depends_on: [create-attendance, create-sessions]
+
+  # --- Phase 5: ビュー設定 ---
+  - name: setup-sessions-views
+    command: "site update {{create-sessions.Id}}"
+    args:
+      json: '{"SiteSettings":{"TitleColumns":["DescriptionA"],"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","ClassE","ClassF","ClassG","StartTime","CompletionTime","NumA","Status","CheckA","DescriptionA","DescriptionB"]},"GridColumns":["StartTime","ClassB","ClassC","ClassD","ClassE","NumA","Status"],"Columns":[{"ColumnName":"ClassA","LabelText":"教育科目","ChoicesText":"[[{{create-subjects.Id}}]]"},{"ColumnName":"ClassB","LabelText":"教育種別","ChoicesText":"基本教育\n業務別教育","ValidateRequired":true},{"ColumnName":"ClassC","LabelText":"対象警備区分","ChoicesText":"共通\n1号警備\n2号警備","ValidateRequired":true},{"ColumnName":"ClassD","LabelText":"講師名","ValidateRequired":true},{"ColumnName":"ClassE","LabelText":"実施場所","ValidateRequired":true},{"ColumnName":"ClassF","LabelText":"年度","ChoicesText":"2025\n2026\n2027\n2028","ValidateRequired":true},{"ColumnName":"ClassG","LabelText":"教育方法","ChoicesText":"講義\n実技\n講義・実技","ValidateRequired":true},{"ColumnName":"NumA","LabelText":"実施時間数","Unit":"時間","ValidateRequired":true},{"ColumnName":"CheckA","LabelText":"指導教育責任者確認"},{"ColumnName":"DescriptionA","LabelText":"教育実施名"},{"ColumnName":"DescriptionB","LabelText":"教育内容詳細"}],"Links":[{"ColumnName":"ClassA","SiteId":{{create-subjects.Id}},"LabelText":"教育科目"}],"Views":[{"Id":1,"Name":"一覧（実施日順）","ColumnSorterHash":{"StartTime":"asc"}},{"Id":2,"Name":"カレンダー","DefaultMode":"Calendar","CalendarTimePeriod":"Monthly","CalendarViewType":"Monthly"}]}}'
+    depends_on: [setup-sessions-links]

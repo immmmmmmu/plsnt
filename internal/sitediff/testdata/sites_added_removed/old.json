@@ -1,0 +1,8 @@
+{
+  "HeaderInfo": {"AssemblyVersion": "1.5.2.0"},
+  "Sites": [
+    {"SiteId": 100, "Title": "残るマスタ", "ParentId": 1, "ReferenceType": "Results", "SiteSettings": {}},
+    {"SiteId": 101, "Title": "削除予定", "ParentId": 1, "ReferenceType": "Results", "SiteSettings": {}},
+    {"SiteId": 102, "Title": "親変更前", "ParentId": 1, "ReferenceType": "Results", "SiteSettings": {}}
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "added": [
+    {
+      "site_id": 103,
+      "title": "新規追加"
+    }
+  ],
+  "removed": [
+    {
+      "site_id": 101,
+      "title": "削除予定"
+    }
+  ],
+  "moved": [
+    {
+      "site_id": 102,
+      "title": "親変更前",
+      "old_parent_id": 1,
+      "new_parent_id": 99
+    }
+  ],
+  "modified": [
+    {
+      "site_id": 102,
+      "title": "親変更前",
+      "changes": [
+        {
+          "path": "Sites[SiteId=102].ParentId",
+          "kind": "modified",
+          "old_value": 1,
+          "new_value": 99
+        }
+      ]
+    }
+  ]
+}

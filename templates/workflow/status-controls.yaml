@@ -1,0 +1,94 @@
+name: workflow-status-controls
+description: |
+  共通事務フローアプリ - 状況による制御設定（StatusControls）
+  ステータスに応じたフィールドの読取専用・非表示・入力必須を制御する。
+
+  【重要: 実行方法】
+  site update は SiteSettings 全体を上書きするため、StatusControls のみを
+  送信すると既存の Processes / Columns 等が消失する。
+  必ず以下の手順で実行すること:
+    1. plsnt site get {site_id} -o json で現在の SiteSettings を取得
+    2. 取得した SiteSettings に StatusControls 配列を追加（マージ）
+    3. マージ済みの全 SiteSettings を含めて plsnt site update を実行
+
+  直接 plsnt batch run では実行不可（マージ処理がバッチエンジン非対応）。
+  エージェントが site get → JSON マージ → site update の手順で適用すること。
+
+variables:
+  header_site_id: "0"
+
+# StatusControls 定義（申請ヘッダ Issues テーブル用）
+#
+# Status 100（下書き）: 制御なし - 全フィールド編集可能
+# Status 500（差戻）:   制御なし - 修正のため全フィールド編集可能
+#
+# 以下のステータスに対して制御を設定:
+steps:
+  - name: setup-status-controls
+    command: site update
+    args:
+      site-id: "{{header_site_id}}"
+      json: |
+        {
+          "SiteSettings": {
+            "StatusControls": [
+              {
+                "Status": 200,
+                "Description": "申請中：主要フィールド読取専用",
+                "ColumnHash": {
+                  "ClassA": "ReadOnly",
+                  "ClassB": "ReadOnly",
+                  "ClassC": "ReadOnly",
+                  "NumB": "ReadOnly"
+                }
+              },
+              {
+                "Status": 300,
+                "Description": "承認中：全カスタムフィールド読取専用",
+                "ColumnHash": {
+                  "ClassA": "ReadOnly",
+                  "ClassB": "ReadOnly",
+                  "ClassC": "ReadOnly",
+                  "ClassD": "ReadOnly",
+                  "ClassE": "ReadOnly",
+                  "ClassF": "ReadOnly",
+                  "NumA": "ReadOnly",
+                  "NumB": "ReadOnly",
+                  "NumC": "ReadOnly",
+                  "DateA": "ReadOnly"
+                }
+              },
+              {
+                "Status": 350,
+                "Description": "役員承認待ち：全カスタムフィールド読取専用",
+                "ColumnHash": {
+                  "ClassA": "ReadOnly",
+                  "ClassB": "ReadOnly",
+                  "ClassC": "ReadOnly",
+                  "ClassD": "ReadOnly",
+                  "ClassE": "ReadOnly",
+                  "ClassF": "ReadOnly",
+                  "NumA": "ReadOnly",
+                  "NumB": "ReadOnly",
+                  "NumC": "ReadOnly",
+                  "DateA": "ReadOnly"
+                }
+              },
+              {
+                "Status": 400,
+                "Description": "承認完了：全体読取専用",
+                "ReadOnly": true
+              },
+              {
+                "Status": 600,
+                "Description": "却下：全体読取専用",
+                "ReadOnly": true
+              },
+              {
+                "Status": 900,
+                "Description": "精算済：全体読取専用",
+                "ReadOnly": true
+              }
+            ]
+          }
+        }

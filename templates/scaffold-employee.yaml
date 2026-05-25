@@ -1,0 +1,26 @@
+name: scaffold-employee
+variables:
+  # ⚠ 実行前の事前準備:
+  #   1. Pleasanter Web UI で親フォルダ (Sites 型) を作成
+  #   2. そのフォルダの SiteId を控える (URL の /items/N の N)
+  #   3. 実行時に親 SiteId を指定:
+  #        plsnt batch run     → --var folder_id=N
+  #        plsnt workflow deploy → --folder-id N
+  #
+  # 理由: Pleasanter API は tenant root (parent_id=0) 直下のサイト作成を
+  #       サポートしない（公式マニュアル example も ParentId=1 のみ）。
+  #       https://pleasanter.org/en/manual/api-site-create
+  folder_id: "0"
+steps:
+  - name: create-branch-master
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"営業所マスタ","ReferenceType":"Results","SiteSettings":{"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD"]},"Columns":[{"ColumnName":"ClassA","LabelText":"営業所名"},{"ColumnName":"ClassB","LabelText":"営業所コード"},{"ColumnName":"ClassC","LabelText":"住所"},{"ColumnName":"ClassD","LabelText":"電話番号"}]}}'
+
+  - name: create-employee-master
+    command: site create
+    args:
+      parent-id: "{{folder_id}}"
+      json: '{"Title":"従業員マスタ","ReferenceType":"Results","SiteSettings":{"EditorColumnHash":{"General":["ClassA","ClassB","ClassC","ClassD","DateA"]},"Columns":[{"ColumnName":"ClassA","LabelText":"氏名"},{"ColumnName":"ClassB","LabelText":"社員番号"},{"ColumnName":"ClassC","LabelText":"営業所"},{"ColumnName":"ClassD","LabelText":"部署"},{"ColumnName":"DateA","LabelText":"入社日"}]}}'
+    depends_on: [create-branch-master]

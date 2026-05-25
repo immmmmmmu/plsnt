@@ -1,0 +1,36 @@
+/* シフト割当ダッシュボード: カレンダービュー最適化 */
+
+/* カレンダーセルの基本スタイル */
+#CalendarBody .calendar-item {
+  padding: 2px 4px;
+  margin-bottom: 1px;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+#CalendarBody .calendar-item:hover {
+  opacity: 0.8;
+}
+
+/* 一覧グリッドのステータス列を太字に */
+td[data-name="Status"] {
+  font-weight: bold;
+}
+
+/* ダッシュボードカードのホバーエフェクト */
+#shift-dashboard > div:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transform: translateY(-1px);
+  transition: all 0.2s;
+}
+
+/* 注: 土日色分け・ガントバー色はPleasanterバージョンのDOM構造に依存するため、
+   実環境でF12開発者ツールでセレクタを確認してから有効化すること */
+
+/* 印刷時はダッシュボードを非表示 */
+@media print {
+  #shift-dashboard { display: none !important; }
+}

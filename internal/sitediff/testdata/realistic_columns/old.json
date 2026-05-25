@@ -1,0 +1,24 @@
+{
+  "HeaderInfo": {
+    "AssemblyVersion": "1.5.2.0",
+    "BaseSiteId": 100,
+    "PackageTime": "2026-04-01T00:00:00",
+    "Server": "http://localhost"
+  },
+  "Sites": [
+    {
+      "SiteId": 100,
+      "Title": "顧客マスタ",
+      "ParentId": 1,
+      "ReferenceType": "Results",
+      "SiteSettings": {
+        "Version": 1.017,
+        "Columns": [
+          {"ColumnName": "ClassA", "LabelText": "顧客コード", "ValidateRequired": true, "NoDuplication": true},
+          {"ColumnName": "ClassB", "LabelText": "顧客名"},
+          {"ColumnName": "NumA", "LabelText": "売上"}
+        ]
+      }
+    }
+  ]
+}

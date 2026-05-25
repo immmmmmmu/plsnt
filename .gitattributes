@@ -1,0 +1,33 @@
+# Auto-detect text files and normalize line endings on checkin
+* text=auto
+
+# Ensure LF for Unix shell scripts (must not get CRLF on Windows clone)
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# Ensure CRLF for Windows-only scripts
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+
+# Source code — force LF
+*.go    text eol=lf
+*.js    text eol=lf
+*.ts    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.toml  text eol=lf
+
+# Binaries — do not touch
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.exe   binary
+*.dll   binary
+*.zip   binary

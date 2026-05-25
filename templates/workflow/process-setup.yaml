@@ -1,0 +1,186 @@
+name: workflow-process-setup
+description: |
+  共通事務フローアプリ - プロセス設定（承認フロー）
+  申請ヘッダ（Issues型）に多段承認プロセスを設定する。
+
+  プロセス一覧（13件）:
+    - 申請:          100 -> 200  （下書き→申請中）
+    - 承認（単段）:  200 -> 900  NumB < 200,000
+    - 承認→部長へ:   200 -> 300  NumB >= 200,000
+    - 部長承認:      300 -> 900  NumB 200,000〜1,000,000未満
+    - 部長承認→役員: 300 -> 350  NumB >= 1,000,000
+    - 役員承認:      350 -> 900  （無条件）
+    - 差戻200:       200 -> 500
+    - 差戻300:       300 -> 500
+    - 差戻350:       350 -> 500
+    - 却下200:       200 -> 600
+    - 却下300:       300 -> 600
+    - 却下350:       350 -> 600
+    - 再申請:        500 -> 200
+
+  【重要: 実行方法】
+  site update は SiteSettings 全体を上書きするため、Processes のみを
+  送信すると既存の Columns / EditorColumnHash 等が消失する。
+  必ず以下の手順で実行すること:
+    1. plsnt site get {site_id} -o json で現在の SiteSettings を取得
+    2. 取得した SiteSettings に Processes 配列を追加（マージ）
+    3. マージ済みの全 SiteSettings を含めて plsnt site update を実行
+
+  直接 plsnt batch run では実行不可（マージ処理がバッチエンジン非対応）。
+  エージェントが site get → JSON マージ → site update の手順で適用すること。
+
+  【検証済み事項】（2026-03-18, Pleasanter 1.5.2.0, SiteID 32518）
+  - Processes 配列の API 投入・取得が正常動作
+  - OnClick は bool で投入可（Pleasanter が string "true" に変換）
+  - View.ColumnFilterHash で数値範囲条件による分岐が動作
+  - 差戻/却下は CurrentStatus ごとに個別プロセスが必要（1プロセス=1遷移）
+  - Enabled, ScreenType は API で保存されない（Pleasanter が無視）
+
+variables:
+  header_site_id: "0"
+
+# Processes 定義（申請ヘッダ Issues テーブル用）
+#
+# 金額条件分岐:
+#   NumB < 200,000       → 単段承認（課長のみ）
+#   200,000 <= NumB < 1,000,000 → 2段承認（課長→部長）
+#   NumB >= 1,000,000    → 3段承認（課長→部長→役員）
+#
+# ColumnFilterHash 数値範囲フォーマット:
+#   "[\"下限\",\"上限\"]" → 下限以上、上限未満
+#   "[\"下限\",\"\"]"     → 下限以上（上限なし）
+
+steps:
+  - name: setup-processes
+    command: site update
+    args:
+      site-id: "{{header_site_id}}"
+      json: |
+        {
+          "SiteSettings": {
+            "Processes": [
+              {
+                "Name": "申請",
+                "DisplayName": "申請する",
+                "CurrentStatus": 100,
+                "ChangedStatus": 200,
+                "OnClick": true
+              },
+              {
+                "Name": "承認（単段）",
+                "DisplayName": "承認する",
+                "CurrentStatus": 200,
+                "ChangedStatus": 900,
+                "ConfirmationMessage": "承認してよろしいですか？",
+                "OnClick": true,
+                "View": {
+                  "ColumnFilterHash": {
+                    "NumB": "[\"0\",\"200000\"]"
+                  }
+                }
+              },
+              {
+                "Name": "承認→部長へ",
+                "DisplayName": "承認（部長へ送付）",
+                "CurrentStatus": 200,
+                "ChangedStatus": 300,
+                "ConfirmationMessage": "課長承認として部長へ送付します",
+                "OnClick": true,
+                "View": {
+                  "ColumnFilterHash": {
+                    "NumB": "[\"200000\",\"\"]"
+                  }
+                }
+              },
+              {
+                "Name": "部長承認",
+                "DisplayName": "承認する",
+                "CurrentStatus": 300,
+                "ChangedStatus": 900,
+                "ConfirmationMessage": "承認してよろしいですか？",
+                "OnClick": true,
+                "View": {
+                  "ColumnFilterHash": {
+                    "NumB": "[\"200000\",\"1000000\"]"
+                  }
+                }
+              },
+              {
+                "Name": "部長承認→役員へ",
+                "DisplayName": "承認（役員へ送付）",
+                "CurrentStatus": 300,
+                "ChangedStatus": 350,
+                "ConfirmationMessage": "部長承認として役員へ送付します",
+                "OnClick": true,
+                "View": {
+                  "ColumnFilterHash": {
+                    "NumB": "[\"1000000\",\"\"]"
+                  }
+                }
+              },
+              {
+                "Name": "役員承認",
+                "DisplayName": "承認する",
+                "CurrentStatus": 350,
+                "ChangedStatus": 900,
+                "ConfirmationMessage": "承認してよろしいですか？",
+                "OnClick": true
+              },
+              {
+                "Name": "差戻200",
+                "DisplayName": "差し戻す",
+                "CurrentStatus": 200,
+                "ChangedStatus": 500,
+                "ConfirmationMessage": "差し戻してよろしいですか？",
+                "OnClick": true
+              },
+              {
+                "Name": "差戻300",
+                "DisplayName": "差し戻す",
+                "CurrentStatus": 300,
+                "ChangedStatus": 500,
+                "ConfirmationMessage": "差し戻してよろしいですか？",
+                "OnClick": true
+              },
+              {
+                "Name": "差戻350",
+                "DisplayName": "差し戻す",
+                "CurrentStatus": 350,
+                "ChangedStatus": 500,
+                "ConfirmationMessage": "差し戻してよろしいですか？",
+                "OnClick": true
+              },
+              {
+                "Name": "却下200",
+                "DisplayName": "却下する",
+                "CurrentStatus": 200,
+                "ChangedStatus": 600,
+                "ConfirmationMessage": "却下してよろしいですか？",
+                "OnClick": true
+              },
+              {
+                "Name": "却下300",
+                "DisplayName": "却下する",
+                "CurrentStatus": 300,
+                "ChangedStatus": 600,
+                "ConfirmationMessage": "却下してよろしいですか？",
+                "OnClick": true
+              },
+              {
+                "Name": "却下350",
+                "DisplayName": "却下する",
+                "CurrentStatus": 350,
+                "ChangedStatus": 600,
+                "ConfirmationMessage": "却下してよろしいですか？",
+                "OnClick": true
+              },
+              {
+                "Name": "再申請",
+                "DisplayName": "再申請する",
+                "CurrentStatus": 500,
+                "ChangedStatus": 200,
+                "OnClick": true
+              }
+            ]
+          }
+        }

@@ -1,0 +1,25 @@
+name: monthly-report
+variables:
+  site_id: "0"
+steps:
+  - name: count-total
+    command: record list
+    args:
+      output: count
+
+  - name: fetch-all-data
+    command: record list
+    args:
+      output: json
+
+  - name: count-open
+    command: record list
+    args:
+      output: count
+      json: '{"View":{"ColumnFilterHash":{"Status":"100"}}}'
+
+  - name: count-closed
+    command: record list
+    args:
+      output: count
+      json: '{"View":{"ColumnFilterHash":{"Status":"900"}}}'
