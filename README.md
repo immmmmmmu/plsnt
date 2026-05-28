@@ -92,6 +92,38 @@ plsnt config mcp-setup --output .mcp.json
 | Linux / macOS | `~/.config/plsnt/config.yaml` |
 | Windows | `%USERPROFILE%\.config\plsnt\config.yaml` |
 
+## スキルの導入（`plsnt init`）
+
+`plsnt init` で Core スキル一式を任意のプロジェクトへ展開できます。スキルは素の Markdown なので、
+Claude Code 専用ではなく **任意の AI エージェントアプリ**で知識として利用できます。
+
+```bash
+# 対話モード（配置先・エージェント・接続先を順に質問）
+plsnt init
+
+# 非対話（CI など）: Codex 向けに AGENTS.md を生成し、プロファイルと .mcp.json も作成
+plsnt init --yes --agent codex \
+  --url https://your-pleasanter.example.com --api-key YOUR_KEY --mcp
+```
+
+同梱されるのは汎用的な **Core 11 スキル**（CLI 操作・テーブル設計・データ移行・MCP 接続など）です。
+
+### 他のエージェントアプリで使う (Cross-Agent Usage)
+
+スキルの中身はツール非依存です。差異は「配置先と起動方法」だけで、`plsnt` CLI が PATH にあれば
+**どのエージェントからでも同じパターンを再現**できます。
+
+| エージェント | 配置先 / 利用方法 | `--agent` |
+|--------------|-------------------|-----------|
+| Claude Code | `.claude/skills/<name>/SKILL.md`（ネイティブ） | `claude`（既定） |
+| OpenAI Codex | `AGENTS.md` に集約 | `codex` |
+| Gemini CLI | `GEMINI.md` に集約 | `gemini` |
+| Cursor / Windsurf / 汎用 | `AGENTS.md` を直接コンテキストへ | `generic` |
+
+`--scope project`（既定, `./`）か `--scope user`（`~/`）で配置先のルートを切り替えます。
+`AGENTS.md` / `GEMINI.md` への書き出しは既存内容を保持し、`<!-- BEGIN plsnt skills -->` 〜
+`<!-- END plsnt skills -->` のブロックだけを更新するため、再実行しても重複しません。
+
 ## Windows での Claude Desktop 連携
 
 Claude Desktop から plsnt を MCP サーバーとして利用する場合:
@@ -200,6 +232,7 @@ plsnt record list --site-id 100 -o ndjson | jq '.ClassHash.ClassA'
 ## コマンド一覧
 
 ```
+plsnt init                                  Core スキル導入（任意エージェント対応）
 plsnt config set/list/use/test/mcp-setup   プロファイル管理
 plsnt record get/list/create/update/delete  レコード CRUD
 plsnt record upsert/import/bulk-delete      一括操作

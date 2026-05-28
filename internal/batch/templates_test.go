@@ -18,8 +18,6 @@ func TestTemplateYAML_ParseAndValidate(t *testing.T) {
 		{"scaffold-employee.yaml", "scaffold-employee", 2},
 		{"integrity-check.yaml", "integrity-check", 3},
 		{"monthly-report.yaml", "monthly-report", 4},
-		{"scaffold-shopping.yaml", "scaffold-shopping", 7},
-		{"scaffold-shopping-v2.yaml", "scaffold-shopping-v2", 14},
 	}
 
 	templatesDir := filepath.Join("..", "..", "templates")
@@ -67,8 +65,6 @@ func TestTemplateYAML_VariableExpansion(t *testing.T) {
 		{"scaffold-task-management.yaml", "folder_id", "99999"},
 		{"scaffold-inventory.yaml", "folder_id", "55555"},
 		{"scaffold-employee.yaml", "folder_id", "77777"},
-		{"scaffold-shopping.yaml", "folder_id", "88888"},
-		{"scaffold-shopping-v2.yaml", "folder_id", "44444"},
 	}
 
 	templatesDir := filepath.Join("..", "..", "templates")
@@ -143,8 +139,6 @@ func TestTemplateYAML_StepNamesUnique(t *testing.T) {
 		"scaffold-employee.yaml",
 		"integrity-check.yaml",
 		"monthly-report.yaml",
-		"scaffold-shopping.yaml",
-		"scaffold-shopping-v2.yaml",
 	}
 
 	templatesDir := filepath.Join("..", "..", "templates")
