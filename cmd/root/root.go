@@ -11,6 +11,7 @@ import (
 	cmdconfig "github.com/immmmmmmu/plsnt/cmd/config"
 	"github.com/immmmmmmu/plsnt/cmd/dept"
 	"github.com/immmmmmmu/plsnt/cmd/group"
+	initcmd "github.com/immmmmmmu/plsnt/cmd/init"
 	cmdmcp "github.com/immmmmmmu/plsnt/cmd/mcp"
 	"github.com/immmmmmmu/plsnt/cmd/migrate"
 	"github.com/immmmmmmu/plsnt/cmd/record"
@@ -56,6 +57,7 @@ func init() {
 
 	rootCmd.AddCommand(access.NewCmd())
 	rootCmd.AddCommand(batch.NewCmd())
+	rootCmd.AddCommand(initcmd.NewCmd())
 	rootCmd.AddCommand(version.NewCmd())
 	rootCmd.AddCommand(cmdconfig.NewCmd())
 	rootCmd.AddCommand(schema.NewCmd())
