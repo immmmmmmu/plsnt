@@ -107,19 +107,24 @@ plsnt init --yes --agent codex \
   --url https://your-pleasanter.example.com --api-key YOUR_KEY --mcp
 ```
 
-同梱されるのは汎用的な **Core 11 スキル**（CLI 操作・テーブル設計・データ移行・MCP 接続など）です。
+同梱される Core セットは以下です（CLI 操作・テーブル設計・データ移行・MCP 接続など）:
+
+- **スキル 11**（汎用リファレンス）
+- **連動するサブエージェント 5**（pleasanter-api-expert / site-builder / data-migrator / report-generator / integrity-checker）
+- **連動するコマンド 5**（site-build / migrate-data / generate-report / check-integrity / seed-data）
+- **ルール 1**（domain-glossary — Pleasanter 用語集）
 
 ### 他のエージェントアプリで使う (Cross-Agent Usage)
 
-スキルの中身はツール非依存です。差異は「配置先と起動方法」だけで、`plsnt` CLI が PATH にあれば
-**どのエージェントからでも同じパターンを再現**できます。
+スキルとルールの中身はツール非依存です。差異は「配置先と起動方法」だけで、`plsnt` CLI が PATH にあれば
+**どのエージェントからでも同じパターンを再現**できます。サブエージェント・コマンドは **Claude Code 固有**の仕組みのため、他エージェントには展開しません（スキル＋ルールのみを畳み込み）。
 
-| エージェント | 配置先 / 利用方法 | `--agent` |
-|--------------|-------------------|-----------|
-| Claude Code | `.claude/skills/<name>/SKILL.md`（ネイティブ） | `claude`（既定） |
-| OpenAI Codex | `AGENTS.md` に集約 | `codex` |
-| Gemini CLI | `GEMINI.md` に集約 | `gemini` |
-| Cursor / Windsurf / 汎用 | `AGENTS.md` を直接コンテキストへ | `generic` |
+| エージェント | 展開される内容 | 配置先 | `--agent` |
+|--------------|----------------|--------|-----------|
+| Claude Code | スキル + サブエージェント + コマンド + ルール | `.claude/{skills,agents,commands,rules}/` | `claude`（既定） |
+| OpenAI Codex | スキル + ルール | `AGENTS.md` に集約 | `codex` |
+| Gemini CLI | スキル + ルール | `GEMINI.md` に集約 | `gemini` |
+| Cursor / Windsurf / 汎用 | スキル + ルール | `AGENTS.md` を直接コンテキストへ | `generic` |
 
 `--scope project`（既定, `./`）か `--scope user`（`~/`）で配置先のルートを切り替えます。
 `AGENTS.md` / `GEMINI.md` への書き出しは既存内容を保持し、`<!-- BEGIN plsnt skills -->` 〜
