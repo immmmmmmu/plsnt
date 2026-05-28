@@ -71,6 +71,27 @@ func TestEmbeddedSkills_NoForbiddenContent(t *testing.T) {
 			t.Errorf("skill %q contains forbidden content [%s] — replace with a fictional placeholder", s.Name, hit)
 		}
 	}
+
+	// Agents, commands, and rules are published for AgentClaude, so they are
+	// subject to the same scan.
+	for _, group := range []struct {
+		kind string
+		load func() ([]Doc, error)
+	}{
+		{"agent", Agents},
+		{"command", Commands},
+		{"rule", Rules},
+	} {
+		docs, err := group.load()
+		if err != nil {
+			t.Fatalf("%s load: %v", group.kind, err)
+		}
+		for _, d := range docs {
+			for _, hit := range scanForbidden(d.Raw) {
+				t.Errorf("%s %q contains forbidden content [%s] — replace with a fictional placeholder", group.kind, d.Name, hit)
+			}
+		}
+	}
 }
 
 // TestForbiddenPatterns_CatchKnownBad proves the scanner actually fires, so it
