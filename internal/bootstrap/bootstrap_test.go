@@ -8,7 +8,13 @@ import (
 	"testing"
 )
 
-const coreSkillCount = 11
+const (
+	coreSkillCount   = 11
+	coreAgentCount   = 5
+	coreCommandCount = 5
+	coreRuleCount    = 1
+	coreClaudeFiles  = coreSkillCount + coreAgentCount + coreCommandCount + coreRuleCount
+)
 
 func TestSkills_ReturnsAllCore(t *testing.T) {
 	skills, err := Skills()
@@ -91,8 +97,8 @@ func TestInstall_Claude(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Install error: %v", err)
 	}
-	if len(written) != coreSkillCount {
-		t.Fatalf("expected %d files written, got %d", coreSkillCount, len(written))
+	if len(written) != coreClaudeFiles {
+		t.Fatalf("expected %d files written, got %d", coreClaudeFiles, len(written))
 	}
 
 	// Each skill is at .claude/skills/<name>/SKILL.md
@@ -103,6 +109,71 @@ func TestInstall_Claude(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "name: plsnt-guide") {
 		t.Errorf("plsnt-guide SKILL.md missing frontmatter")
+	}
+
+	// Agents, commands, and rules are flat .md files under .claude/.
+	for _, p := range []string{
+		filepath.Join(dir, ".claude", "agents", "pleasanter-api-expert.md"),
+		filepath.Join(dir, ".claude", "commands", "site-build.md"),
+		filepath.Join(dir, ".claude", "rules", "domain-glossary.md"),
+	} {
+		if _, statErr := os.Stat(p); statErr != nil {
+			t.Errorf("expected %s to exist: %v", p, statErr)
+		}
+	}
+}
+
+func TestAgentsCommandsRules_Counts(t *testing.T) {
+	agents, err := Agents()
+	if err != nil || len(agents) != coreAgentCount {
+		t.Errorf("Agents() = %d (err %v), want %d", len(agents), err, coreAgentCount)
+	}
+	cmds, err := Commands()
+	if err != nil || len(cmds) != coreCommandCount {
+		t.Errorf("Commands() = %d (err %v), want %d", len(cmds), err, coreCommandCount)
+	}
+	rules, err := Rules()
+	if err != nil || len(rules) != coreRuleCount {
+		t.Errorf("Rules() = %d (err %v), want %d", len(rules), err, coreRuleCount)
+	}
+	if len(agents) > 0 && !contains(docNames(agents), "pleasanter-api-expert") {
+		t.Errorf("expected pleasanter-api-expert agent: %v", docNames(agents))
+	}
+	if len(rules) > 0 && rules[0].Name != "domain-glossary" {
+		t.Errorf("expected domain-glossary rule, got %q", rules[0].Name)
+	}
+}
+
+func docNames(docs []Doc) []string {
+	out := make([]string, len(docs))
+	for i, d := range docs {
+		out[i] = d.Name
+	}
+	return out
+}
+
+func TestInstall_NonClaude_FoldsRulesButNotAgentsCommands(t *testing.T) {
+	dir := t.TempDir()
+	written, err := Install(dir, AgentCodex)
+	if err != nil {
+		t.Fatalf("Install error: %v", err)
+	}
+	// Only AGENTS.md is written — no .claude/ tree for non-Claude agents.
+	if len(written) != 1 {
+		t.Fatalf("expected 1 file, got %d: %v", len(written), written)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, ".claude")); statErr == nil {
+		t.Errorf(".claude/ must not be created for codex agent")
+	}
+	data, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	content := string(data)
+	// Rule content (domain glossary) is folded in.
+	if !strings.Contains(content, "rule: domain-glossary") || !strings.Contains(content, "SiteID") {
+		t.Errorf("AGENTS.md should fold in the domain-glossary rule")
+	}
+	// Sub-agent / command names must NOT be folded in (they don't function).
+	if strings.Contains(content, "Pleasanter API Expert") {
+		t.Errorf("AGENTS.md should not contain sub-agent content")
 	}
 }
 

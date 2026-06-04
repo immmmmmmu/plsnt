@@ -131,9 +131,17 @@ func runInit(opts options) error {
 		return errs.Wrap(err, errs.CodeInternalError)
 	}
 
-	names, _ := bootstrap.SkillNames()
-	fmt.Fprintf(opts.stderr, "Installed %d Core skills for agent %q into %s\n",
-		len(names), opts.agent, opts.baseDir)
+	skills, _ := bootstrap.SkillNames()
+	rules, _ := bootstrap.Rules()
+	if opts.agent == bootstrap.AgentClaude {
+		agents, _ := bootstrap.Agents()
+		cmds, _ := bootstrap.Commands()
+		fmt.Fprintf(opts.stderr, "Installed for agent %q into %s: %d skills, %d sub-agents, %d commands, %d rules\n",
+			opts.agent, opts.baseDir, len(skills), len(agents), len(cmds), len(rules))
+	} else {
+		fmt.Fprintf(opts.stderr, "Installed for agent %q into %s: %d skills + %d rules folded into the bundle\n",
+			opts.agent, opts.baseDir, len(skills), len(rules))
+	}
 	for _, p := range written {
 		rel, relErr := filepath.Rel(opts.baseDir, p)
 		if relErr != nil {
