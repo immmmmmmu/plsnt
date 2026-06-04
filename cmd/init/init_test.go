@@ -87,8 +87,11 @@ func TestRunInit_WithMCP(t *testing.T) {
 	if _, statErr := os.Stat(filepath.Join(dir, ".mcp.json")); statErr != nil {
 		t.Fatalf("expected .mcp.json: %v", statErr)
 	}
+	if _, statErr := os.Stat(filepath.Join(dir, ".codex", "skills", "plsnt-guide", "SKILL.md")); statErr != nil {
+		t.Fatalf("expected .codex skill: %v", statErr)
+	}
 	if _, statErr := os.Stat(filepath.Join(dir, "AGENTS.md")); statErr != nil {
-		t.Fatalf("expected AGENTS.md: %v", statErr)
+		t.Fatalf("expected AGENTS.md bootstrap: %v", statErr)
 	}
 }
 
@@ -146,8 +149,8 @@ func TestNewCmd_NonInteractive(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute error: %v", err)
 	}
-	if _, statErr := os.Stat(filepath.Join(tmp, "AGENTS.md")); statErr != nil {
-		t.Fatalf("expected AGENTS.md in cwd: %v", statErr)
+	if _, statErr := os.Stat(filepath.Join(tmp, ".codex", "skills", "plsnt-guide", "SKILL.md")); statErr != nil {
+		t.Fatalf("expected .codex skill in cwd: %v", statErr)
 	}
 }
 

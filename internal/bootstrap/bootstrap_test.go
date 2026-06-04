@@ -152,34 +152,37 @@ func docNames(docs []Doc) []string {
 	return out
 }
 
-func TestInstall_NonClaude_FoldsRulesButNotAgentsCommands(t *testing.T) {
+func TestInstall_Codex_WritesNativeSkillsAndBootstrap(t *testing.T) {
 	dir := t.TempDir()
 	written, err := Install(dir, AgentCodex)
 	if err != nil {
 		t.Fatalf("Install error: %v", err)
 	}
-	// Only AGENTS.md is written — no .claude/ tree for non-Claude agents.
-	if len(written) != 1 {
-		t.Fatalf("expected 1 file, got %d: %v", len(written), written)
+	if len(written) != coreSkillCount+1 {
+		t.Fatalf("expected %d files, got %d: %v", coreSkillCount+1, len(written), written)
 	}
 	if _, statErr := os.Stat(filepath.Join(dir, ".claude")); statErr == nil {
 		t.Errorf(".claude/ must not be created for codex agent")
 	}
+	if _, statErr := os.Stat(filepath.Join(dir, ".codex", "skills", "plsnt-guide", "SKILL.md")); statErr != nil {
+		t.Fatalf("expected .codex skill: %v", statErr)
+	}
 	data, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
 	content := string(data)
-	// Rule content (domain glossary) is folded in.
 	if !strings.Contains(content, "rule: domain-glossary") || !strings.Contains(content, "SiteID") {
-		t.Errorf("AGENTS.md should fold in the domain-glossary rule")
+		t.Errorf("AGENTS.md should include durable rule guidance")
 	}
-	// Sub-agent / command names must NOT be folded in (they don't function).
+	if strings.Contains(content, "# plsnt CLI 操作ガイド") {
+		t.Errorf("AGENTS.md should not aggregate full skill bodies for codex")
+	}
 	if strings.Contains(content, "Pleasanter API Expert") {
 		t.Errorf("AGENTS.md should not contain sub-agent content")
 	}
 }
 
-func TestInstall_Codex_WritesAgentsMD(t *testing.T) {
+func TestInstall_Generic_WritesAgentsMDAggregate(t *testing.T) {
 	dir := t.TempDir()
-	written, err := Install(dir, AgentCodex)
+	written, err := Install(dir, AgentGeneric)
 	if err != nil {
 		t.Fatalf("Install error: %v", err)
 	}
@@ -236,6 +239,34 @@ func TestInstall_Codex_MergeIsIdempotentAndPreservesUserContent(t *testing.T) {
 		t.Fatalf("first Install error: %v", err)
 	}
 	if _, err := Install(dir, AgentCodex); err != nil {
+		t.Fatalf("second Install error: %v", err)
+	}
+
+	data, _ := os.ReadFile(agentsPath)
+	content := string(data)
+	if !strings.Contains(content, "Do not touch the database.") {
+		t.Errorf("user content lost after install")
+	}
+	if got := strings.Count(content, beginMarker); got != 1 {
+		t.Errorf("expected exactly 1 begin marker after double install, got %d", got)
+	}
+	if got := strings.Count(content, endMarker); got != 1 {
+		t.Errorf("expected exactly 1 end marker after double install, got %d", got)
+	}
+}
+
+func TestInstall_Generic_MergeIsIdempotentAndPreservesUserContent(t *testing.T) {
+	dir := t.TempDir()
+	agentsPath := filepath.Join(dir, "AGENTS.md")
+	userContent := "# My project rules\n\nDo not touch the database.\n"
+	if err := os.WriteFile(agentsPath, []byte(userContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Install(dir, AgentGeneric); err != nil {
+		t.Fatalf("first Install error: %v", err)
+	}
+	if _, err := Install(dir, AgentGeneric); err != nil {
 		t.Fatalf("second Install error: %v", err)
 	}
 

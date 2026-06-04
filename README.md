@@ -102,7 +102,7 @@ Claude Code 専用ではなく **任意の AI エージェントアプリ**で�
 # 対話モード（配置先・エージェント・接続先を順に質問）
 plsnt init
 
-# 非対話（CI など）: Codex 向けに AGENTS.md を生成し、プロファイルと .mcp.json も作成
+# 非対話（CI など）: Codex 向けに .codex/skills を生成し、プロファイルと .mcp.json も作成
 plsnt init --yes --agent codex \
   --url https://your-pleasanter.example.com --api-key YOUR_KEY --mcp
 ```
@@ -122,11 +122,12 @@ plsnt init --yes --agent codex \
 | エージェント | 展開される内容 | 配置先 | `--agent` |
 |--------------|----------------|--------|-----------|
 | Claude Code | スキル + サブエージェント + コマンド + ルール | `.claude/{skills,agents,commands,rules}/` | `claude`（既定） |
-| OpenAI Codex | スキル + ルール | `AGENTS.md` に集約 | `codex` |
+| OpenAI Codex | スキル + ルール | `.codex/skills/<name>/SKILL.md`（ネイティブ）、`AGENTS.md` に小さなブートストラップ | `codex` |
 | Gemini CLI | スキル + ルール | `GEMINI.md` に集約 | `gemini` |
 | Cursor / Windsurf / 汎用 | スキル + ルール | `AGENTS.md` を直接コンテキストへ | `generic` |
 
 `--scope project`（既定, `./`）か `--scope user`（`~/`）で配置先のルートを切り替えます。
+Codex の `AGENTS.md` は durable なブートストラップのみで、スキル本体は `.codex/skills/` を使います。
 `AGENTS.md` / `GEMINI.md` への書き出しは既存内容を保持し、`<!-- BEGIN plsnt skills -->` 〜
 `<!-- END plsnt skills -->` のブロックだけを更新するため、再実行しても重複しません。
 

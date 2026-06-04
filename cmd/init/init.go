@@ -50,7 +50,7 @@ directory) so an AI agent can operate plsnt effectively.
 
 The skills are plain Markdown and work with any agent app:
   --agent claude    .claude/skills/<name>/SKILL.md (default)
-  --agent codex     AGENTS.md
+  --agent codex     .codex/skills/<name>/SKILL.md
   --agent gemini    GEMINI.md
   --agent generic   AGENTS.md
 
@@ -138,6 +138,9 @@ func runInit(opts options) error {
 		cmds, _ := bootstrap.Commands()
 		fmt.Fprintf(opts.stderr, "Installed for agent %q into %s: %d skills, %d sub-agents, %d commands, %d rules\n",
 			opts.agent, opts.baseDir, len(skills), len(agents), len(cmds), len(rules))
+	} else if opts.agent == bootstrap.AgentCodex {
+		fmt.Fprintf(opts.stderr, "Installed for agent %q into %s: %d native skills + AGENTS.md bootstrap\n",
+			opts.agent, opts.baseDir, len(skills))
 	} else {
 		fmt.Fprintf(opts.stderr, "Installed for agent %q into %s: %d skills + %d rules folded into the bundle\n",
 			opts.agent, opts.baseDir, len(skills), len(rules))
